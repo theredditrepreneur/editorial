@@ -199,12 +199,17 @@ async function publishLinkedIn(
   request: NextRequest,
   text: string,
   media: Media[],
+  company = false,
 ) {
   const sealed = request.cookies.get(
-    "newsroom_linkedin_personal_connection",
+    company
+      ? "newsroom_linkedin_company_connection"
+      : "newsroom_linkedin_personal_connection",
   )?.value;
   if (!sealed)
-    throw new Error("Reconnect LinkedIn Personal in Settings first.");
+    throw new Error(
+      `Reconnect LinkedIn ${company ? "Company" : "Personal"} in Settings first.`,
+    );
   if (media.length)
     throw new Error(
       "LinkedIn media publishing is not enabled yet; publish this version as text.",
@@ -213,15 +218,65 @@ async function publishLinkedIn(
     sealed,
     process.env.LINKEDIN_CLIENT_SECRET!,
   );
-  const profileResponse = await fetch("https://api.linkedin.com/v2/userinfo", {
-    headers: { authorization: `Bearer ${token.access_token}` },
-    cache: "no-store",
-  });
-  const profile = await profileResponse.json();
-  if (!profileResponse.ok || !profile.sub)
-    throw new Error(
-      "LinkedIn could not identify the connected member. Reconnect the account.",
+  let author: string;
+  if (company) {
+    const headers = {
+      authorization: `Bearer ${token.access_token}`,
+      "linkedin-version": "202607",
+      "x-restli-protocol-version": "2.0.0",
+    };
+    const aclResponse = await fetch(
+      "https://api.linkedin.com/rest/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED",
+      { headers, cache: "no-store" },
     );
+    const acl = (await aclResponse.json()) as {
+      elements?: Array<{ organization?: string }>;
+      message?: string;
+    };
+    if (!aclResponse.ok || !acl.elements?.length)
+      throw new Error(
+        acl.message ||
+          "No LinkedIn Company Page was found where the connected member is an administrator.",
+      );
+    let chosen = acl.elements[0].organization;
+    for (const item of acl.elements) {
+      const id = item.organization?.split(":").pop();
+      if (!id) continue;
+      const organizationResponse = await fetch(
+        `https://api.linkedin.com/rest/organizations/${id}`,
+        { headers, cache: "no-store" },
+      );
+      if (!organizationResponse.ok) continue;
+      const organization = (await organizationResponse.json()) as {
+        localizedName?: string;
+      };
+      if (
+        organization.localizedName?.toLowerCase().includes("redditrepreneur")
+      ) {
+        chosen = item.organization;
+        break;
+      }
+    }
+    if (!chosen)
+      throw new Error(
+        "The Redditrepreneur LinkedIn Page could not be identified.",
+      );
+    author = chosen;
+  } else {
+    const profileResponse = await fetch(
+      "https://api.linkedin.com/v2/userinfo",
+      {
+        headers: { authorization: `Bearer ${token.access_token}` },
+        cache: "no-store",
+      },
+    );
+    const profile = await profileResponse.json();
+    if (!profileResponse.ok || !profile.sub)
+      throw new Error(
+        "LinkedIn could not identify the connected member. Reconnect the account.",
+      );
+    author = `urn:li:person:${profile.sub}`;
+  }
   const response = await fetch("https://api.linkedin.com/rest/posts", {
     method: "POST",
     headers: {
@@ -231,7 +286,7 @@ async function publishLinkedIn(
       "x-restli-protocol-version": "2.0.0",
     },
     body: JSON.stringify({
-      author: `urn:li:person:${profile.sub}`,
+      author,
       commentary: text,
       visibility: "PUBLIC",
       distribution: {
@@ -274,8 +329,13 @@ export async function POST(request: NextRequest) {
     const result =
       platform === "X"
         ? await publishX(request, text, media)
-        : platform === "LinkedIn Personal"
-          ? await publishLinkedIn(request, text, media)
+        : platform === "LinkedIn Personal" || platform === "LinkedIn Company"
+          ? await publishLinkedIn(
+              request,
+              text,
+              media,
+              platform === "LinkedIn Company",
+            )
           : ["Facebook Page", "Instagram"].includes(platform)
             ? await publishMeta(request, platform, text, media)
             : (() => {

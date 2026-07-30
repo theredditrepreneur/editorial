@@ -626,9 +626,13 @@ function Distribution({ article }: { article: Article }) {
     const selected = channels.filter(
       (channel) =>
         enabled[channel] &&
-        ["X", "Facebook Page", "Instagram", "LinkedIn Personal"].includes(
-          channel,
-        ),
+        [
+          "X",
+          "Facebook Page",
+          "Instagram",
+          "LinkedIn Personal",
+          "LinkedIn Company",
+        ].includes(channel),
     );
     if (!selected.length) {
       setNotice("Select X, Facebook Page or Instagram to publish.");
@@ -643,10 +647,9 @@ function Distribution({ article }: { article: Article }) {
         body: JSON.stringify({
           platform,
           text: texts[platform],
-          media:
-            platform === "LinkedIn Personal"
-              ? []
-              : media.map((item) => ({ url: item.url, type: item.type })),
+          media: platform.startsWith("LinkedIn")
+            ? []
+            : media.map((item) => ({ url: item.url, type: item.type })),
         }),
       });
       const result = await response.json();

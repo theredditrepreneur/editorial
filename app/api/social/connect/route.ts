@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
       "scope",
       platform === "LinkedIn Personal"
         ? "openid profile w_member_social"
-        : "openid profile",
+        : "openid profile rw_organization_admin w_organization_social",
     );
     return oauthCookies(
       NextResponse.redirect(authorization),
