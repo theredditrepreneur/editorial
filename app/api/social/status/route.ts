@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { openConnection } from "../../../../lib/social-connection";
 
 export async function GET(request: NextRequest) {
-  const metaConnected = Boolean(
-    request.cookies.get("newsroom_meta_connection")?.value,
-  );
+  let metaConnected = false;
+  const metaCookie = request.cookies.get("newsroom_meta_connection")?.value;
+  if (metaCookie && process.env.META_APP_SECRET) {
+    try {
+      const connection = openConnection<{
+        accounts?: Array<{ access_token?: string }>;
+      }>(metaCookie, process.env.META_APP_SECRET);
+      metaConnected = Boolean(connection.accounts?.[0]?.access_token);
+    } catch {
+      metaConnected = false;
+    }
+  }
   const connected = metaConnected ? ["Facebook", "Instagram"] : [];
   if (request.cookies.has("newsroom_linkedin_personal_connection"))
     connected.push("LinkedIn Personal");

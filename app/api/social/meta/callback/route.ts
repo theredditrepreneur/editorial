@@ -47,8 +47,24 @@ export async function GET(request: NextRequest) {
   );
   const accountsResponse = await fetch(accountsUrl, { cache: "no-store" });
   const accounts = accountsResponse.ok
-    ? ((await accountsResponse.json()) as { data?: unknown[] }).data || []
+    ? (
+        (await accountsResponse.json()) as {
+          data?: Array<{ id: string; name: string }>;
+        }
+      ).data || []
     : [];
+  const selectedAccount =
+    accounts.find((account) =>
+      account.name.toLowerCase().includes("redditrepreneur"),
+    ) || accounts[0];
+  if (!selectedAccount) {
+    destination.searchParams.set("connection", "token-error");
+    destination.searchParams.set(
+      "reason",
+      "Meta did not return a Facebook Page. Approve Page access for The Redditrepreneur during reconnection.",
+    );
+    return NextResponse.redirect(destination);
+  }
 
   destination.searchParams.set("connection", "connected");
   const response = NextResponse.redirect(destination);
@@ -59,7 +75,9 @@ export async function GET(request: NextRequest) {
         accessToken: token.access_token,
         expiresIn: token.expires_in,
         connectedAt: new Date().toISOString(),
-        accounts,
+        // Keep this encrypted cookie under browser size limits by storing only
+        // the publication Page rather than every Page the member administers.
+        accounts: [selectedAccount],
       },
       process.env.META_APP_SECRET!,
     ),

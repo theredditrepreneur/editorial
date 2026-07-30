@@ -7,25 +7,13 @@ import ProfileMenu from "./profile-menu";
 import type { Article } from "../lib/articles";
 
 type Page =
-  | "Dashboard"
-  | "Articles"
-  | "Distribution"
-  | "Editorial Calendar"
-  | "Industries"
-  | "Frameworks"
-  | "Performance"
-  | "Repurpose"
-  | "Settings";
+  "Dashboard" | "Articles" | "Distribution" | "Editorial Calendar" | "Settings";
 
 const nav: { name: Page; icon: string }[] = [
   { name: "Dashboard", icon: "⌂" },
   { name: "Articles", icon: "▤" },
   { name: "Distribution", icon: "↗" },
   { name: "Editorial Calendar", icon: "□" },
-  { name: "Industries", icon: "◫" },
-  { name: "Frameworks", icon: "◇" },
-  { name: "Performance", icon: "↗" },
-  { name: "Repurpose", icon: "⟳" },
   { name: "Settings", icon: "⚙" },
 ];
 const fallbackArticles: Article[] = [
@@ -87,10 +75,6 @@ const paths: Record<Page, string> = {
   Articles: "/articles",
   Distribution: "/distribution",
   "Editorial Calendar": "/editorial-calendar",
-  Industries: "/industries",
-  Frameworks: "/frameworks",
-  Performance: "/performance",
-  Repurpose: "/repurpose",
   Settings: "/settings",
 };
 export default function Newsroom({
@@ -222,10 +206,6 @@ export default function Newsroom({
             />
           )}{" "}
           {page === "Editorial Calendar" && <Calendar articles={articles} />}{" "}
-          {page === "Industries" && <Industries articles={articles} />}{" "}
-          {page === "Frameworks" && <Frameworks articles={articles} />}{" "}
-          {page === "Performance" && <Performance />}{" "}
-          {page === "Repurpose" && <Repurpose articles={articles} />}{" "}
           {page === "Settings" && <Settings />}
         </section>
       </main>

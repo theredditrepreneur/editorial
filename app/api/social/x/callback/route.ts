@@ -47,8 +47,11 @@ export async function GET(request: NextRequest) {
   const response = NextResponse.redirect(destination);
   response.cookies.set(
     "newsroom_x_connection",
-    sealConnection(token, process.env.X_CLIENT_SECRET!),
-    { ...connectionCookie, maxAge: token.expires_in || 7200 },
+    sealConnection(
+      { ...token, obtainedAt: Date.now() },
+      process.env.X_CLIENT_SECRET!,
+    ),
+    { ...connectionCookie, maxAge: 60 * 60 * 24 * 180 },
   );
   response.cookies.delete("newsroom_x_state");
   response.cookies.delete("newsroom_x_verifier");

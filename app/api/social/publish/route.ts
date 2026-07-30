@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { openConnection } from "../../../../lib/social-connection";
+import {
+  openConnection,
+  sealConnection,
+} from "../../../../lib/social-connection";
 
 type Media = { url: string; type: string };
 type MetaAccount = {
@@ -144,10 +147,42 @@ async function publishX(request: NextRequest, text: string, media: Media[]) {
     );
   if (media.length > 4)
     throw new Error("X supports a maximum of four images per post.");
-  const token = openConnection<{ access_token: string }>(
-    sealed,
-    process.env.X_CLIENT_SECRET!,
-  );
+  let token = openConnection<{
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+    obtainedAt?: number;
+  }>(sealed, process.env.X_CLIENT_SECRET!);
+  let refreshedConnection: string | undefined;
+  const expiresAt =
+    (token.obtainedAt || 0) + (token.expires_in || 7200) * 1000 - 60_000;
+  if (token.refresh_token && Date.now() >= expiresAt) {
+    const refreshBody = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: token.refresh_token,
+    });
+    const basic = Buffer.from(
+      `${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`,
+    ).toString("base64");
+    const refreshResponse = await fetch("https://api.x.com/2/oauth2/token", {
+      method: "POST",
+      headers: {
+        authorization: `Basic ${basic}`,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: refreshBody,
+      cache: "no-store",
+    });
+    const refreshed = await refreshResponse.json();
+    if (!refreshResponse.ok || !refreshed.access_token)
+      throw new Error("Your X session expired. Reconnect X in Settings.");
+    token = {
+      ...refreshed,
+      refresh_token: refreshed.refresh_token || token.refresh_token,
+      obtainedAt: Date.now(),
+    };
+    refreshedConnection = sealConnection(token, process.env.X_CLIENT_SECRET!);
+  }
   const mediaIds: string[] = [];
   for (const item of media) {
     const fileResponse = await fetch(item.url, { cache: "no-store" });
@@ -192,6 +227,7 @@ async function publishX(request: NextRequest, text: string, media: Media[]) {
   return {
     id: result.data.id,
     url: `https://x.com/i/web/status/${result.data.id}`,
+    refreshedConnection,
   };
 }
 
@@ -248,6 +284,7 @@ async function publishLinkedIn(
     headers: {
       authorization: `Bearer ${token.access_token}`,
       "content-type": "application/json",
+      "linkedin-version": "202607",
       "x-restli-protocol-version": "2.0.0",
     },
     body: JSON.stringify({
@@ -309,7 +346,19 @@ export async function POST(request: NextRequest) {
             : (() => {
                 throw new Error(`${platform} publishing is not enabled yet.`);
               })();
-    return NextResponse.json({ ok: true, ...result });
+    const { refreshedConnection, ...publicResult } = result as typeof result & {
+      refreshedConnection?: string;
+    };
+    const response = NextResponse.json({ ok: true, ...publicResult });
+    if (refreshedConnection)
+      response.cookies.set("newsroom_x_connection", refreshedConnection, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 180,
+      });
+    return response;
   } catch (error) {
     console.error("Social publish failed", {
       platform: requestedPlatform,
