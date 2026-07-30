@@ -69,10 +69,13 @@ export async function GET(request: NextRequest) {
     authorization.searchParams.set("redirect_uri", callback.toString());
     authorization.searchParams.set("response_type", "code");
     authorization.searchParams.set("state", state);
-    authorization.searchParams.set(
-      "scope",
-      "pages_show_list,pages_read_engagement,pages_manage_posts,instagram_basic,instagram_content_publish",
-    );
+    authorization.searchParams.set("scope", "public_profile");
+    if (process.env.META_LOGIN_CONFIG_ID) {
+      authorization.searchParams.set(
+        "config_id",
+        process.env.META_LOGIN_CONFIG_ID,
+      );
+    }
     return oauthCookies(
       NextResponse.redirect(authorization),
       "meta",
@@ -94,7 +97,7 @@ export async function GET(request: NextRequest) {
     );
     authorization.searchParams.set("redirect_uri", callback.toString());
     authorization.searchParams.set("state", state);
-    authorization.searchParams.set("scope", "openid profile w_member_social");
+    authorization.searchParams.set("scope", "openid profile");
     return oauthCookies(
       NextResponse.redirect(authorization),
       "linkedin",

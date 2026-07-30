@@ -2,5 +2,48 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { authConfigured } from "./lib/auth-config";
 
-export default async function proxy(request:NextRequest){if(!authConfigured){if(request.nextUrl.pathname==="/configuration-required")return NextResponse.next();return NextResponse.redirect(new URL("/configuration-required",request.url))}let response=NextResponse.next({request});const supabase=createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,{cookies:{getAll:()=>request.cookies.getAll(),setAll(items){items.forEach(({name,value})=>request.cookies.set(name,value));response=NextResponse.next({request});items.forEach(({name,value,options})=>response.cookies.set(name,value,options))}}});const {data:{user}}=await supabase.auth.getUser();const publicPath=request.nextUrl.pathname.startsWith("/sign-in")||request.nextUrl.pathname.startsWith("/auth/");if(!user&&!publicPath)return NextResponse.redirect(new URL("/sign-in",request.url));if(user&&request.nextUrl.pathname.startsWith("/sign-in"))return NextResponse.redirect(new URL("/",request.url));return response}
-export const config={matcher:["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"]};
+export default async function proxy(request: NextRequest) {
+  if (!authConfigured) {
+    if (request.nextUrl.pathname === "/configuration-required")
+      return NextResponse.next();
+    return NextResponse.redirect(
+      new URL("/configuration-required", request.url),
+    );
+  }
+  let response = NextResponse.next({ request });
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll(items) {
+          items.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          items.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options),
+          );
+        },
+      },
+    },
+  );
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const publicPath =
+    request.nextUrl.pathname.startsWith("/sign-in") ||
+    request.nextUrl.pathname.startsWith("/auth/") ||
+    request.nextUrl.pathname === "/privacy" ||
+    request.nextUrl.pathname === "/terms" ||
+    request.nextUrl.pathname === "/data-deletion";
+  if (!user && !publicPath)
+    return NextResponse.redirect(new URL("/sign-in", request.url));
+  if (user && request.nextUrl.pathname.startsWith("/sign-in"))
+    return NextResponse.redirect(new URL("/", request.url));
+  return response;
+}
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
