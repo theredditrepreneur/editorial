@@ -1201,11 +1201,14 @@ function Settings() {
     const required = params.get("required")?.split(",").filter(Boolean) || [];
     if (result === "connected") {
       queueMicrotask(() => {
-        setConnectedPlatforms(
-          platform === "Facebook" || platform === "Instagram"
-            ? ["Facebook", "Instagram"]
-            : [platform],
-        );
+        setConnectedPlatforms((current) => [
+          ...new Set([
+            ...current,
+            ...(platform === "Facebook" || platform === "Instagram"
+              ? ["Facebook", "Instagram"]
+              : [platform]),
+          ]),
+        ]);
         setConnectionMessage(
           `${platform} connected successfully. Publishing access is now securely stored.`,
         );
@@ -1216,11 +1219,13 @@ function Settings() {
       setConnectionMessage(
         result === "credentials-required"
           ? `Add ${required.join(" and ")} to Vercel before connecting ${platform}.`
-          : result === "denied"
-            ? `${platform} did not grant access. You can try again when ready.`
-            : result === "token-error"
-              ? `Meta could not complete the connection: ${params.get("reason") || "token exchange failed"}.`
-              : `${platform} OAuth support is the next provider connection to enable.`,
+          : result === "newsletter-provider-required"
+            ? "Choose the newsletter service you use (for example Beehiiv, ConvertKit or Mailchimp) before this connection can be completed."
+            : result === "denied"
+              ? `${platform} did not grant access. You can try again when ready.`
+              : result === "token-error"
+                ? `Meta could not complete the connection: ${params.get("reason") || "token exchange failed"}.`
+                : `${platform} OAuth support is the next provider connection to enable.`,
       ),
     );
   }, []);
