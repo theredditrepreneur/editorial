@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { UserButton } from "@clerk/nextjs";
 
 type Page = "Dashboard" | "Articles" | "Distribution" | "Editorial Calendar" | "Industries" | "Frameworks" | "Performance" | "Repurpose" | "Settings";
 type Article = { title:string; industry:string; framework:string; status:string; distribution:string; date:string; views:string; lifecycle:number; tags:string[] };
@@ -36,7 +37,7 @@ export default function Newsroom({initialPage="Dashboard"}:{initialPage?:Page}){
       <div className="brand"><div className="brand-mark">R</div><div><strong>THE REDDITREPRENEUR</strong><span>NEWSROOM</span></div></div>
       <nav>{nav.map(n=><button key={n.name} className={page===n.name?"active":""} onClick={()=>go(n.name)}><i>{n.icon}</i>{n.name}{n.name==="Distribution"&&<b>2</b>}</button>)}</nav>
       <div className="desk-status"><span className="live-dot"/>NEWSROOM LIVE<strong>Thursday, 30 July</strong></div>
-      <div className="profile"><div className="avatar">TR</div><div><strong>Editor-in-Chief</strong><span>Private workspace</span></div><button>•••</button></div>
+      <div className="profile"><UserButton/><div><strong>Editor-in-Chief</strong><span>Private workspace</span></div></div>
     </aside>
     {mobile&&<button className="scrim" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}
     <main>
