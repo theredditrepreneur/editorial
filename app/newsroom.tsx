@@ -1186,6 +1186,41 @@ function Settings() {
   const [setup, setSetup] = useState<string | null>(null);
   const [connectionMessage, setConnectionMessage] = useState("");
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+  const [connecting, setConnecting] = useState(false);
+  const startConnection = (platform: string) => {
+    setConnecting(true);
+    setConnectionMessage(`Waiting for ${platform} approval…`);
+    const popup = window.open(
+      `/api/social/connect?platform=${encodeURIComponent(platform)}`,
+      "newsroom-social-connect",
+      "popup=yes,width=650,height=760,resizable=yes,scrollbars=yes",
+    );
+    let checks = 0;
+    const poll = window.setInterval(async () => {
+      checks += 1;
+      try {
+        const response = await fetch("/api/social/status", {
+          cache: "no-store",
+        });
+        const data = (await response.json()) as { connected?: string[] };
+        const current = data.connected || [];
+        setConnectedPlatforms(current);
+        if (
+          current.includes(platform) ||
+          (platform === "Facebook" && current.includes("Instagram"))
+        ) {
+          window.clearInterval(poll);
+          popup?.close();
+          setConnecting(false);
+          setConnectionMessage(`${platform} connected successfully.`);
+        }
+      } catch {}
+      if (checks >= 80 || popup?.closed) {
+        window.clearInterval(poll);
+        setConnecting(false);
+      }
+    }, 1500);
+  };
   useEffect(() => {
     fetch("/api/social/status", { cache: "no-store" })
       .then((response) => response.json())
@@ -1278,12 +1313,13 @@ function Settings() {
           </div>
           <div className="connection-actions">
             <button onClick={() => setSetup(null)}>Cancel</button>
-            <a
+            <button
               className="button primary"
-              href={`/api/social/connect?platform=${encodeURIComponent(setup)}`}
+              disabled={connecting}
+              onClick={() => startConnection(setup)}
             >
-              Continue to {setup} →
-            </a>
+              {connecting ? "Waiting for approval…" : `Open ${setup} login →`}
+            </button>
           </div>
         </div>
       )}

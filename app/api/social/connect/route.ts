@@ -94,12 +94,7 @@ export async function GET(request: NextRequest) {
     );
     authorization.searchParams.set("redirect_uri", callback.toString());
     authorization.searchParams.set("state", state);
-    authorization.searchParams.set(
-      "scope",
-      platform === "LinkedIn Company"
-        ? "openid profile w_member_social rw_organization_admin w_organization_social"
-        : "openid profile w_member_social",
-    );
+    authorization.searchParams.set("scope", "openid profile w_member_social");
     return oauthCookies(
       NextResponse.redirect(authorization),
       "linkedin",
@@ -119,7 +114,7 @@ export async function GET(request: NextRequest) {
     authorization.searchParams.set("redirect_uri", callback.toString());
     authorization.searchParams.set(
       "scope",
-      "tweet.read tweet.write users.read offline.access media.write",
+      "tweet.read tweet.write users.read offline.access",
     );
     authorization.searchParams.set("state", state);
     authorization.searchParams.set("code_challenge", challenge);
