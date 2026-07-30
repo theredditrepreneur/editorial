@@ -1,25 +1,28 @@
 # The Redditrepreneur Newsroom
 
-Private editorial operating system for The Redditrepreneur, built with Next.js 16, Clerk, Neon Postgres, Drizzle and Vercel.
+Private editorial operating system built with Next.js 16, Supabase, Ghost and Vercel.
 
-## Local setup
+## Data architecture
 
-1. Copy `.env.example` to `.env.local`.
-2. Add the existing Redditrepreneur Clerk publishable and secret keys.
-3. Create or connect a Neon Postgres database and add its `DATABASE_URL`.
-4. Run `npm install`, `npm run db:generate`, then `npm run dev`.
+- Ghost at `blog.theredditrepreneur.com` is the publication source. Published articles are refreshed every five minutes through the Ghost Content API or its public RSS fallback.
+- The existing Redditrepreneur Supabase project provides authentication and stores newsroom workflow, distribution, performance and repurposing records.
+- The SQL migration in `drizzle-pg` can be applied to the Supabase Postgres database.
 
-## Vercel deployment
+## Vercel configuration
 
-1. Import `theredditrepreneur/editorial` in Vercel.
-2. Keep the detected framework preset as Next.js and the build command as `npm run build`.
-3. Add every variable from `.env.example` in Project Settings → Environment Variables.
-4. Add a Neon integration or supply an existing Postgres `DATABASE_URL`.
-5. Deploy, then add `editorial.theredditrepreneur.com` in Project Settings → Domains.
-6. Add the DNS record Vercel supplies at the domain provider.
+Add the variables in `.env.example` under Project Settings → Environment Variables. At minimum, the app requires:
 
-Clerk must list both the generated Vercel URL and `editorial.theredditrepreneur.com` as allowed production origins. The application protects all newsroom routes and exposes only `/sign-in` publicly.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+For server-side writes, also add `SUPABASE_SERVICE_ROLE_KEY`. A Ghost Content API key is optional because the application falls back to the public Ghost RSS feed.
+
+In Supabase Authentication → URL Configuration, add the production callback:
+
+`https://editorial.theredditrepreneur.com/auth/callback`
+
+Then redeploy and connect `editorial.theredditrepreneur.com` under Vercel Project Settings → Domains.
 
 ## Validation
 
-Run `npm test` to execute linting, TypeScript checking and a production Next.js build.
+Run `npm test` to execute linting, TypeScript checking and a production build.

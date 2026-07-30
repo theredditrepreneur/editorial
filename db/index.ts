@@ -1,9 +1,3 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
-import * as schema from "./schema";
+import { createClient } from "@supabase/supabase-js";
 
-export function getDb() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) throw new Error("DATABASE_URL is not configured");
-  return drizzle(neon(databaseUrl), { schema });
-}
+export function getSupabaseAdmin(){const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error("Supabase server credentials are not configured");return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}})}

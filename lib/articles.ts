@@ -1,0 +1,1 @@
+export type Article = { title:string; industry:string; framework:string; status:string; distribution:string; date:string; views:string; lifecycle:number; tags:string[]; url?:string; summary?:string };

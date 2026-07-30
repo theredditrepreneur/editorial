@@ -1,71 +1,1048 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { UserButton } from "@clerk/nextjs";
+import Link from "next/link";
+import type { Article } from "../lib/articles";
 
-type Page = "Dashboard" | "Articles" | "Distribution" | "Editorial Calendar" | "Industries" | "Frameworks" | "Performance" | "Repurpose" | "Settings";
-type Article = { title:string; industry:string; framework:string; status:string; distribution:string; date:string; views:string; lifecycle:number; tags:string[] };
+type Page =
+  | "Dashboard"
+  | "Articles"
+  | "Distribution"
+  | "Editorial Calendar"
+  | "Industries"
+  | "Frameworks"
+  | "Performance"
+  | "Repurpose"
+  | "Settings";
 
-const nav: {name:Page; icon:string}[] = [
-  {name:"Dashboard",icon:"⌂"},{name:"Articles",icon:"▤"},{name:"Distribution",icon:"↗"},{name:"Editorial Calendar",icon:"□"},{name:"Industries",icon:"◫"},{name:"Frameworks",icon:"◇"},{name:"Performance",icon:"↗"},{name:"Repurpose",icon:"⟳"},{name:"Settings",icon:"⚙"},
+const nav: { name: Page; icon: string }[] = [
+  { name: "Dashboard", icon: "⌂" },
+  { name: "Articles", icon: "▤" },
+  { name: "Distribution", icon: "↗" },
+  { name: "Editorial Calendar", icon: "□" },
+  { name: "Industries", icon: "◫" },
+  { name: "Frameworks", icon: "◇" },
+  { name: "Performance", icon: "↗" },
+  { name: "Repurpose", icon: "⟳" },
+  { name: "Settings", icon: "⚙" },
 ];
-const articles: Article[] = [
-  {title:"Halo Comes To PlayStation",industry:"Gaming",framework:"Community Gravity",status:"Published",distribution:"3 of 4 live",date:"30 Jul 2026",views:"12.4K",lifecycle:78,tags:["Xbox","PlayStation"]},
-  {title:"Why AI Products Are Losing Their Early Adopters",industry:"AI",framework:"Trust Collapse",status:"Ready",distribution:"Not started",date:"30 Jul 2026",views:"—",lifecycle:48,tags:["AI","Retention"]},
-  {title:"The Community Economics Behind the New Club World Cup",industry:"Sport",framework:"Mission Premium",status:"Draft",distribution:"Not started",date:"29 Jul 2026",views:"—",lifecycle:31,tags:["Football"]},
-  {title:"When Brand Loyalty Becomes Community Gravity",industry:"Consumer Brands",framework:"Community Gravity",status:"Research",distribution:"Not started",date:"28 Jul 2026",views:"—",lifecycle:18,tags:["Loyalty"]},
-  {title:"The Franchise Reboot Nobody Asked For",industry:"Entertainment",framework:"Belief Correction",status:"Published",distribution:"4 of 4 live",date:"25 Jul 2026",views:"8.7K",lifecycle:85,tags:["Film","Culture"]},
+const fallbackArticles: Article[] = [
+  {
+    title: "Halo Comes To PlayStation",
+    industry: "Gaming",
+    framework: "Community Gravity",
+    status: "Published",
+    distribution: "3 of 4 live",
+    date: "30 Jul 2026",
+    views: "12.4K",
+    lifecycle: 78,
+    tags: ["Xbox", "PlayStation"],
+  },
+  {
+    title: "Why AI Products Are Losing Their Early Adopters",
+    industry: "AI",
+    framework: "Trust Collapse",
+    status: "Ready",
+    distribution: "Not started",
+    date: "30 Jul 2026",
+    views: "—",
+    lifecycle: 48,
+    tags: ["AI", "Retention"],
+  },
+  {
+    title: "The Community Economics Behind the New Club World Cup",
+    industry: "Sport",
+    framework: "Mission Premium",
+    status: "Draft",
+    distribution: "Not started",
+    date: "29 Jul 2026",
+    views: "—",
+    lifecycle: 31,
+    tags: ["Football"],
+  },
+  {
+    title: "When Brand Loyalty Becomes Community Gravity",
+    industry: "Consumer Brands",
+    framework: "Community Gravity",
+    status: "Research",
+    distribution: "Not started",
+    date: "28 Jul 2026",
+    views: "—",
+    lifecycle: 18,
+    tags: ["Loyalty"],
+  },
+  {
+    title: "The Franchise Reboot Nobody Asked For",
+    industry: "Entertainment",
+    framework: "Belief Correction",
+    status: "Published",
+    distribution: "4 of 4 live",
+    date: "25 Jul 2026",
+    views: "8.7K",
+    lifecycle: 85,
+    tags: ["Film", "Culture"],
+  },
 ];
-const industries = [{name:"Gaming",count:18,color:"#f26a2e"},{name:"AI",count:14,color:"#4361a6"},{name:"Sport",count:11,color:"#0c7767"},{name:"Consumer Brands",count:9,color:"#b34d6f"},{name:"Entertainment",count:8,color:"#7c58a5"},{name:"SaaS",count:7,color:"#b78520"}];
-const frameworks = ["Community Intelligence Stack","Community Gravity","Customer Insight Triangle","Belief Correction","Narrative Compression","Trust Collapse","Mission Premium","Community Intelligence Scorecard"];
-const channels = ["LinkedIn Personal","LinkedIn Company","Facebook Page","X"];
-const copy:Record<string,string> = {
-  "LinkedIn Personal":"Halo coming to PlayStation isn’t just a platform shift. It’s a live case study in community gravity.\n\nFor twenty years, the franchise helped define Xbox identity. Now Microsoft is testing whether the community belongs to the platform—or to Halo itself.\n\nOur latest Community Intelligence analysis breaks down what happens next.",
-  "LinkedIn Company":"NEW ANALYSIS — Halo Comes To PlayStation\n\nWhat happens when a platform-defining franchise crosses the boundary that made it culturally powerful? We examine the community signals, strategic trade-offs and the future of Xbox identity.",
-  "Facebook Page":"Halo is coming to PlayStation. For players, that’s big news. For Microsoft, it’s a high-stakes test of where community loyalty really lives. Read our latest Gaming Community Intelligence analysis.",
-  "X":"Halo on PlayStation is more than a platform shift. It’s a test of community gravity—and whether loyalty belongs to Xbox or to the franchise itself. Our latest analysis ↓",
+const industries = [
+  { name: "Gaming", count: 18, color: "#f26a2e" },
+  { name: "AI", count: 14, color: "#4361a6" },
+  { name: "Sport", count: 11, color: "#0c7767" },
+  { name: "Consumer Brands", count: 9, color: "#b34d6f" },
+  { name: "Entertainment", count: 8, color: "#7c58a5" },
+  { name: "SaaS", count: 7, color: "#b78520" },
+];
+const frameworks = [
+  "Community Intelligence Stack",
+  "Community Gravity",
+  "Customer Insight Triangle",
+  "Belief Correction",
+  "Narrative Compression",
+  "Trust Collapse",
+  "Mission Premium",
+  "Community Intelligence Scorecard",
+];
+const channels = [
+  "LinkedIn Personal",
+  "LinkedIn Company",
+  "Facebook Page",
+  "X",
+];
+const copy: Record<string, string> = {
+  "LinkedIn Personal":
+    "Halo coming to PlayStation isn’t just a platform shift. It’s a live case study in community gravity.\n\nFor twenty years, the franchise helped define Xbox identity. Now Microsoft is testing whether the community belongs to the platform—or to Halo itself.\n\nOur latest Community Intelligence analysis breaks down what happens next.",
+  "LinkedIn Company":
+    "NEW ANALYSIS — Halo Comes To PlayStation\n\nWhat happens when a platform-defining franchise crosses the boundary that made it culturally powerful? We examine the community signals, strategic trade-offs and the future of Xbox identity.",
+  "Facebook Page":
+    "Halo is coming to PlayStation. For players, that’s big news. For Microsoft, it’s a high-stakes test of where community loyalty really lives. Read our latest Gaming Community Intelligence analysis.",
+  X: "Halo on PlayStation is more than a platform shift. It’s a test of community gravity—and whether loyalty belongs to Xbox or to the franchise itself. Our latest analysis ↓",
 };
 
-const paths:Record<Page,string>={Dashboard:"/",Articles:"/articles",Distribution:"/distribution","Editorial Calendar":"/editorial-calendar",Industries:"/industries",Frameworks:"/frameworks",Performance:"/performance",Repurpose:"/repurpose",Settings:"/settings"};
-export default function Newsroom({initialPage="Dashboard"}:{initialPage?:Page}){
-  const [page,setPage]=useState<Page>(initialPage); const [mobile,setMobile]=useState(false); const [query,setQuery]=useState("");
-  const [selectedArticle,setSelectedArticle]=useState(articles[0]);
-  const go=(p:Page)=>{setPage(p);setMobile(false);window.history.pushState({},"",paths[p])};
-  useEffect(()=>{const onPop=()=>{const found=(Object.entries(paths).find(([,v])=>v===window.location.pathname)?.[0]||"Dashboard") as Page;setPage(found)};window.addEventListener("popstate",onPop);return()=>window.removeEventListener("popstate",onPop)},[]);
-  return <div className="app-shell">
-    <aside className={mobile?"sidebar open":"sidebar"}>
-      <div className="brand"><div className="brand-mark">R</div><div><strong>THE REDDITREPRENEUR</strong><span>NEWSROOM</span></div></div>
-      <nav>{nav.map(n=><button key={n.name} className={page===n.name?"active":""} onClick={()=>go(n.name)}><i>{n.icon}</i>{n.name}{n.name==="Distribution"&&<b>2</b>}</button>)}</nav>
-      <div className="desk-status"><span className="live-dot"/>NEWSROOM LIVE<strong>Thursday, 30 July</strong></div>
-      <div className="profile"><UserButton/><div><strong>Editor-in-Chief</strong><span>Private workspace</span></div></div>
-    </aside>
-    {mobile&&<button className="scrim" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}
-    <main>
-      <header><button className="menu" onClick={()=>setMobile(true)}>☰</button><div className="breadcrumbs"><span>Newsroom</span><b>/</b>{page}</div><div className="header-actions"><button className="search">⌕ <span>Search newsroom</span><kbd>⌘ K</kbd></button><button className="notify">●</button><button className="primary" onClick={()=>go("Articles")}>＋ New article</button></div></header>
-      <section className="content">{page==="Dashboard"&&<Dashboard go={go}/>} {page==="Articles"&&<Articles query={query} setQuery={setQuery} open={(a)=>{setSelectedArticle(a);go("Distribution")}}/>} {page==="Distribution"&&<Distribution article={selectedArticle}/>} {page==="Editorial Calendar"&&<Calendar/>} {page==="Industries"&&<Industries/>} {page==="Frameworks"&&<Frameworks/>} {page==="Performance"&&<Performance/>} {page==="Repurpose"&&<Repurpose/>} {page==="Settings"&&<Settings/>}</section>
-    </main>
-  </div>
+const paths: Record<Page, string> = {
+  Dashboard: "/",
+  Articles: "/articles",
+  Distribution: "/distribution",
+  "Editorial Calendar": "/editorial-calendar",
+  Industries: "/industries",
+  Frameworks: "/frameworks",
+  Performance: "/performance",
+  Repurpose: "/repurpose",
+  Settings: "/settings",
+};
+export default function Newsroom({
+  initialPage = "Dashboard",
+  sourceArticles = [],
+  authConfigured = true,
+}: {
+  initialPage?: Page;
+  sourceArticles?: Article[];
+  authConfigured?: boolean;
+}) {
+  const articles = sourceArticles.length ? sourceArticles : fallbackArticles;
+  const [page, setPage] = useState<Page>(initialPage);
+  const [mobile, setMobile] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedArticle, setSelectedArticle] = useState(articles[0]);
+  const go = (p: Page) => {
+    setPage(p);
+    setMobile(false);
+    window.history.pushState({}, "", paths[p]);
+  };
+  useEffect(() => {
+    const onPop = () => {
+      const found = (Object.entries(paths).find(
+        ([, v]) => v === window.location.pathname,
+      )?.[0] || "Dashboard") as Page;
+      setPage(found);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  return (
+    <div className="app-shell">
+      <aside className={mobile ? "sidebar open" : "sidebar"}>
+        <div className="brand">
+          <div className="brand-mark">R</div>
+          <div>
+            <strong>THE REDDITREPRENEUR</strong>
+            <span>NEWSROOM</span>
+          </div>
+        </div>
+        <nav>
+          {nav.map((n) => (
+            <button
+              key={n.name}
+              className={page === n.name ? "active" : ""}
+              onClick={() => go(n.name)}
+            >
+              <i>{n.icon}</i>
+              {n.name}
+              {n.name === "Distribution" && <b>2</b>}
+            </button>
+          ))}
+        </nav>
+        <div className="desk-status">
+          <span className="live-dot" />
+          NEWSROOM LIVE<strong>Thursday, 30 July</strong>
+        </div>
+        <div className="profile">
+          <div className="avatar">TR</div>
+          <div>
+            <strong>Editor-in-Chief</strong>
+            <span>{authConfigured ? "Supabase protected" : "Configuration required"}</span>
+          </div>
+          {authConfigured && <Link href="/auth/signout" aria-label="Sign out">•••</Link>}
+        </div>
+      </aside>
+      {mobile && (
+        <button
+          className="scrim"
+          onClick={() => setMobile(false)}
+          aria-label="Close navigation"
+        />
+      )}
+      <main>
+        <header>
+          <button className="menu" onClick={() => setMobile(true)}>
+            ☰
+          </button>
+          <div className="breadcrumbs">
+            <span>Newsroom</span>
+            <b>/</b>
+            {page}
+          </div>
+          <div className="header-actions">
+            <button className="search">
+              ⌕ <span>Search newsroom</span>
+              <kbd>⌘ K</kbd>
+            </button>
+            <button className="notify">●</button>
+            <button className="primary" onClick={() => go("Articles")}>
+              ＋ New article
+            </button>
+          </div>
+        </header>
+        <section className="content">
+          {page === "Dashboard" && <Dashboard go={go} articles={articles} />}{" "}
+          {page === "Articles" && (
+            <Articles
+              articles={articles}
+              query={query}
+              setQuery={setQuery}
+              open={(a) => {
+                setSelectedArticle(a);
+                go("Distribution");
+              }}
+            />
+          )}{" "}
+          {page === "Distribution" && (
+            <Distribution article={selectedArticle} />
+          )}{" "}
+          {page === "Editorial Calendar" && <Calendar />}{" "}
+          {page === "Industries" && <Industries articles={articles} />}{" "}
+          {page === "Frameworks" && <Frameworks articles={articles} />}{" "}
+          {page === "Performance" && <Performance />}{" "}
+          {page === "Repurpose" && <Repurpose />}{" "}
+          {page === "Settings" && <Settings />}
+        </section>
+      </main>
+    </div>
+  );
 }
 
-function Title({eyebrow,title,sub,action}:{eyebrow?:string;title:string;sub:string;action?:React.ReactNode}){return <div className="page-title">{eyebrow&&<span>{eyebrow}</span>}<div><div><h1>{title}</h1><p>{sub}</p></div>{action}</div></div>}
-function Dashboard({go}:{go:(p:Page)=>void}){return <>
-  <Title eyebrow="EDITORIAL COMMAND CENTRE" title="Good morning, Editor." sub="Your publication is on schedule. Two stories require distribution today." action={<button className="secondary">View editorial brief →</button>}/>
-  <div className="brief"><div><span className="pulse"/><b>TODAY’S PUBLICATION SUMMARY</b></div><strong>1 story published · 2 ready for distribution · 1 scheduled for 16:00</strong><p>Halo Comes To PlayStation is live and gaining early traction. LinkedIn Personal and X distribution remain outstanding.</p></div>
-  <div className="stats">{[["Published today","1","↑ 1 vs. yesterday"],["Drafts","6","2 need review"],["Awaiting distribution","2","Action required"],["Scheduled","4","Next at 16:00"],["Articles this month","24","↑ 14% vs. June"],["Website views","48.2K","Integration ready"]].map((s,i)=><div className="stat" key={s[0]}><span>{s[0]}</span><strong>{s[1]}</strong><small className={i===2?"warn":""}>{s[2]}</small></div>)}</div>
-  <div className="dashboard-grid"><div className="panel latest"><div className="panel-head"><div><h2>Latest articles</h2><p>Publication and distribution status</p></div><button onClick={()=>go("Articles")}>View all →</button></div><ArticleTable compact open={()=>go("Distribution")}/></div>
-  <div className="panel coverage"><div className="panel-head"><div><h2>Industry coverage</h2><p>Articles published this quarter</p></div></div>{industries.map(x=><div className="coverage-row" key={x.name}><span className="dot" style={{background:x.color}}/><b>{x.name}</b><div><i style={{width:`${x.count*4}%`,background:x.color}}/></div><strong>{x.count}</strong></div>)}<footer><b>67</b><span>Total intelligence reports</span></footer></div></div>
-  <Workflow/>
-  </>}
-function Workflow(){const steps=["Idea","Research","Draft","Published","Distribution","Performance","Repurpose","Archive"];return <div className="panel workflow"><div className="panel-head"><div><h2>The publication workflow</h2><p>From first signal to enduring intelligence</p></div><span>EDITORIAL OPERATING SYSTEM</span></div><div className="workflow-steps">{steps.map((x,i)=><div key={x} className={i===4?"current":""}><i>{i<3?"✓":i+1}</i><b>{x}</b>{i<steps.length-1&&<em>→</em>}</div>)}</div></div>}
+function Title({
+  eyebrow,
+  title,
+  sub,
+  action,
+}: {
+  eyebrow?: string;
+  title: string;
+  sub: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="page-title">
+      {eyebrow && <span>{eyebrow}</span>}
+      <div>
+        <div>
+          <h1>{title}</h1>
+          <p>{sub}</p>
+        </div>
+        {action}
+      </div>
+    </div>
+  );
+}
+function Dashboard({ go, articles }: { go: (p: Page) => void; articles: Article[] }) {
+  return (
+    <>
+      <Title
+        eyebrow="EDITORIAL COMMAND CENTRE"
+        title="Good morning, Editor."
+        sub="Your publication is on schedule. Two stories require distribution today."
+        action={<button className="secondary">View editorial brief →</button>}
+      />
+      <div className="brief">
+        <div>
+          <span className="pulse" />
+          <b>TODAY’S PUBLICATION SUMMARY</b>
+        </div>
+        <strong>
+          1 story published · 2 ready for distribution · 1 scheduled for 16:00
+        </strong>
+        <p>
+          Halo Comes To PlayStation is live and gaining early traction. LinkedIn
+          Personal and X distribution remain outstanding.
+        </p>
+      </div>
+      <div className="stats">
+        {[
+          ["Published today", "1", "↑ 1 vs. yesterday"],
+          ["Drafts", "6", "2 need review"],
+          ["Awaiting distribution", "2", "Action required"],
+          ["Scheduled", "4", "Next at 16:00"],
+          ["Articles this month", "24", "↑ 14% vs. June"],
+          ["Website views", "48.2K", "Integration ready"],
+        ].map((s, i) => (
+          <div className="stat" key={s[0]}>
+            <span>{s[0]}</span>
+            <strong>{s[1]}</strong>
+            <small className={i === 2 ? "warn" : ""}>{s[2]}</small>
+          </div>
+        ))}
+      </div>
+      <div className="dashboard-grid">
+        <div className="panel latest">
+          <div className="panel-head">
+            <div>
+              <h2>Latest articles</h2>
+              <p>Live from blog.theredditrepreneur.com</p>
+            </div>
+            <button onClick={() => go("Articles")}>View all →</button>
+          </div>
+          <ArticleTable articles={articles} compact open={() => go("Distribution")} />
+        </div>
+        <div className="panel coverage">
+          <div className="panel-head">
+            <div>
+              <h2>Industry coverage</h2>
+              <p>Articles published this quarter</p>
+            </div>
+          </div>
+          {industries.map((x) => (
+            <div className="coverage-row" key={x.name}>
+              <span className="dot" style={{ background: x.color }} />
+              <b>{x.name}</b>
+              <div>
+                <i style={{ width: `${x.count * 4}%`, background: x.color }} />
+              </div>
+              <strong>{x.count}</strong>
+            </div>
+          ))}
+          <footer>
+            <b>67</b>
+            <span>Total intelligence reports</span>
+          </footer>
+        </div>
+      </div>
+      <Workflow />
+    </>
+  );
+}
+function Workflow() {
+  const steps = [
+    "Idea",
+    "Research",
+    "Draft",
+    "Published",
+    "Distribution",
+    "Performance",
+    "Repurpose",
+    "Archive",
+  ];
+  return (
+    <div className="panel workflow">
+      <div className="panel-head">
+        <div>
+          <h2>The publication workflow</h2>
+          <p>From first signal to enduring intelligence</p>
+        </div>
+        <span>EDITORIAL OPERATING SYSTEM</span>
+      </div>
+      <div className="workflow-steps">
+        {steps.map((x, i) => (
+          <div key={x} className={i === 4 ? "current" : ""}>
+            <i>{i < 3 ? "✓" : i + 1}</i>
+            <b>{x}</b>
+            {i < steps.length - 1 && <em>→</em>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-function ArticleTable({compact=false,open}:{compact?:boolean;open:(a:Article)=>void}){return <div className="table-wrap"><table><thead><tr><th>Headline</th><th>Industry</th><th>Status</th><th>Distribution</th><th>{compact?"Published":"Date"}</th><th/></tr></thead><tbody>{articles.slice(0,compact?4:9).map(a=><tr key={a.title}><td><strong>{a.title}</strong><small>{a.framework}</small></td><td><span className="industry">{a.industry}</span></td><td><span className={`status ${a.status.toLowerCase()}`}>● {a.status}</span></td><td><span className={a.distribution.startsWith("Not")?"muted":"progress"}>{a.distribution}</span></td><td>{a.date}</td><td><button className="row-action" onClick={()=>open(a)}>{a.status==="Published"?"Open distribution":"Open"} →</button></td></tr>)}</tbody></table></div>}
-function Articles({query,setQuery,open}:{query:string;setQuery:(v:string)=>void;open:(a:Article)=>void}){const filtered=useMemo(()=>articles.filter(a=>Object.values(a).flat().join(" ").toLowerCase().includes(query.toLowerCase())),[query]);return <><Title eyebrow="INTELLIGENCE LIBRARY" title="Articles" sub="Manage every report from first signal through archive." action={<button className="primary">＋ New article</button>}/><div className="tabs"><button className="active">All <b>67</b></button>{["Idea","Research","Draft","Ready","Published","Archived"].map(x=><button key={x}>{x}</button>)}</div><div className="toolbar"><label>⌕<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search headline, framework or tag…"/></label><button>Industry⌄</button><button>Framework⌄</button><button>Status⌄</button><button>Date⌄</button><span>{filtered.length} articles</span></div><div className="panel"><ArticleTable open={open}/></div></>}
+function ArticleTable({
+  articles,
+  compact = false,
+  open,
+}: {
+  articles: Article[];
+  compact?: boolean;
+  open: (a: Article) => void;
+}) {
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Headline</th>
+            <th>Industry</th>
+            <th>Status</th>
+            <th>Distribution</th>
+            <th>{compact ? "Published" : "Date"}</th>
+            <th />
+          </tr>
+        </thead>
+        <tbody>
+          {articles.slice(0, compact ? 4 : 9).map((a) => (
+            <tr key={a.title}>
+              <td>
+                <strong>{a.title}</strong>
+                <small>{a.framework}</small>
+              </td>
+              <td>
+                <span className="industry">{a.industry}</span>
+              </td>
+              <td>
+                <span className={`status ${a.status.toLowerCase()}`}>
+                  ● {a.status}
+                </span>
+              </td>
+              <td>
+                <span
+                  className={
+                    a.distribution.startsWith("Not") ? "muted" : "progress"
+                  }
+                >
+                  {a.distribution}
+                </span>
+              </td>
+              <td>{a.date}</td>
+              <td>
+                <button className="row-action" onClick={() => open(a)}>
+                  {a.status === "Published" ? "Open distribution" : "Open"} →
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function Articles({
+  articles,
+  query,
+  setQuery,
+  open,
+}: {
+  articles: Article[];
+  query: string;
+  setQuery: (v: string) => void;
+  open: (a: Article) => void;
+}) {
+  const filtered = useMemo(
+    () =>
+      articles.filter((a) =>
+        Object.values(a)
+          .flat()
+          .join(" ")
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+      ),
+    [articles, query],
+  );
+  return (
+    <>
+      <Title
+        eyebrow="INTELLIGENCE LIBRARY"
+        title="Articles"
+        sub="Manage every report from first signal through archive."
+        action={<button className="primary">＋ New article</button>}
+      />
+      <div className="tabs">
+        <button className="active">
+          All <b>{articles.length}</b>
+        </button>
+        {["Idea", "Research", "Draft", "Ready", "Published", "Archived"].map(
+          (x) => (
+            <button key={x}>{x}</button>
+          ),
+        )}
+      </div>
+      <div className="toolbar">
+        <label>
+          ⌕
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search headline, framework or tag…"
+          />
+        </label>
+        <button>Industry⌄</button>
+        <button>Framework⌄</button>
+        <button>Status⌄</button>
+        <button>Date⌄</button>
+        <span>{filtered.length} articles</span>
+      </div>
+      <div className="panel">
+        <ArticleTable articles={filtered} open={open} />
+      </div>
+    </>
+  );
+}
 
-function Distribution({article}:{article:Article}){const [texts,setTexts]=useState(copy);const [tab,setTab]=useState(channels[0]);const [enabled,setEnabled]=useState<Record<string,boolean>>({"LinkedIn Personal":true,"LinkedIn Company":true,"Facebook Page":true,"X":true});return <><Title eyebrow="DISTRIBUTION DESK" title={article.title} sub={`${article.industry} Community Intelligence · Published 30 July 2026`} action={<button className="secondary">↗ View live article</button>}/><div className="distribution-head"><div className="hero-preview"><div className="halo">HALO<br/><span>COMES TO</span><br/>PLAYSTATION</div><small>THEREDDITREPRENEUR.COM</small></div><div><span className="status published">● Published</span><h3>Distribution progress</h3><div className="big-progress"><i style={{width:"72%"}}/></div><p><b>3 of 4</b> selected channels ready · Last saved 2 minutes ago</p></div><div className="lifecycle"><span>Article lifecycle</span><b>Distribution</b><p>Performance tracking begins when the first post goes live.</p></div></div><div className="distribution-layout"><div className="channel-list panel"><h3>Social channels</h3>{channels.map(c=><button className={tab===c?"selected":""} onClick={()=>setTab(c)} key={c}><span className="channel-icon">{c[0]}</span><div><b>{c}</b><small>{c==="X"?"Draft ready":"Copy ready"}</small></div><i onClick={(e)=>{e.stopPropagation();setEnabled({...enabled,[c]:!enabled[c]})}} className={enabled[c]?"toggle on":"toggle"}/></button>)}<button><span className="channel-icon">◎</span><div><b>Threads <em>SOON</em></b><small>Not available</small></div><i className="toggle"/></button><button><span className="channel-icon">B</span><div><b>Bluesky <em>SOON</em></b><small>Not available</small></div><i className="toggle"/></button><div className="newsletter"><input type="checkbox" defaultChecked/><div><b>Weekly newsletter</b><small>Include in next edition</small></div></div></div><div className="copy-editor panel"><div className="editor-head"><div><span className="channel-icon">{tab[0]}</span><div><h2>{tab}</h2><p>Platform-specific copy · Saved independently</p></div></div><button>✦ Generate AI version</button></div><textarea value={texts[tab]} onChange={e=>setTexts({...texts,[tab]:e.target.value})}/><div className="counter"><span>Auto-saved just now</span><b className={texts[tab].length>280&&tab==="X"?"over":""}>{texts[tab].length} / {tab==="X"?280:3000}</b></div><div className="editor-actions"><button>Preview</button><button>Schedule</button><button className="primary">Publish to {tab}</button></div></div></div><div className="master-bar"><div><span>MASTER CONTROLS</span><b>4 platforms selected</b></div><button>Save drafts</button><button>✦ Regenerate all copy</button><button>Schedule all</button><button className="primary">Publish selected platforms ↗</button></div></>}
+function Distribution({ article }: { article: Article }) {
+  const [texts, setTexts] = useState(copy);
+  const [tab, setTab] = useState(channels[0]);
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({
+    "LinkedIn Personal": true,
+    "LinkedIn Company": true,
+    "Facebook Page": true,
+    X: true,
+  });
+  return (
+    <>
+      <Title
+        eyebrow="DISTRIBUTION DESK"
+        title={article.title}
+        sub={`${article.industry} Community Intelligence · Published 30 July 2026`}
+        action={<button className="secondary">↗ View live article</button>}
+      />
+      <div className="distribution-head">
+        <div className="hero-preview">
+          <div className="halo">
+            HALO
+            <br />
+            <span>COMES TO</span>
+            <br />
+            PLAYSTATION
+          </div>
+          <small>THEREDDITREPRENEUR.COM</small>
+        </div>
+        <div>
+          <span className="status published">● Published</span>
+          <h3>Distribution progress</h3>
+          <div className="big-progress">
+            <i style={{ width: "72%" }} />
+          </div>
+          <p>
+            <b>3 of 4</b> selected channels ready · Last saved 2 minutes ago
+          </p>
+        </div>
+        <div className="lifecycle">
+          <span>Article lifecycle</span>
+          <b>Distribution</b>
+          <p>Performance tracking begins when the first post goes live.</p>
+        </div>
+      </div>
+      <div className="distribution-layout">
+        <div className="channel-list panel">
+          <h3>Social channels</h3>
+          {channels.map((c) => (
+            <button
+              className={tab === c ? "selected" : ""}
+              onClick={() => setTab(c)}
+              key={c}
+            >
+              <span className="channel-icon">{c[0]}</span>
+              <div>
+                <b>{c}</b>
+                <small>{c === "X" ? "Draft ready" : "Copy ready"}</small>
+              </div>
+              <i
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEnabled({ ...enabled, [c]: !enabled[c] });
+                }}
+                className={enabled[c] ? "toggle on" : "toggle"}
+              />
+            </button>
+          ))}
+          <button>
+            <span className="channel-icon">◎</span>
+            <div>
+              <b>
+                Threads <em>SOON</em>
+              </b>
+              <small>Not available</small>
+            </div>
+            <i className="toggle" />
+          </button>
+          <button>
+            <span className="channel-icon">B</span>
+            <div>
+              <b>
+                Bluesky <em>SOON</em>
+              </b>
+              <small>Not available</small>
+            </div>
+            <i className="toggle" />
+          </button>
+          <div className="newsletter">
+            <input type="checkbox" defaultChecked />
+            <div>
+              <b>Weekly newsletter</b>
+              <small>Include in next edition</small>
+            </div>
+          </div>
+        </div>
+        <div className="copy-editor panel">
+          <div className="editor-head">
+            <div>
+              <span className="channel-icon">{tab[0]}</span>
+              <div>
+                <h2>{tab}</h2>
+                <p>Platform-specific copy · Saved independently</p>
+              </div>
+            </div>
+            <button>✦ Generate AI version</button>
+          </div>
+          <textarea
+            value={texts[tab]}
+            onChange={(e) => setTexts({ ...texts, [tab]: e.target.value })}
+          />
+          <div className="counter">
+            <span>Auto-saved just now</span>
+            <b className={texts[tab].length > 280 && tab === "X" ? "over" : ""}>
+              {texts[tab].length} / {tab === "X" ? 280 : 3000}
+            </b>
+          </div>
+          <div className="editor-actions">
+            <button>Preview</button>
+            <button>Schedule</button>
+            <button className="primary">Publish to {tab}</button>
+          </div>
+        </div>
+      </div>
+      <div className="master-bar">
+        <div>
+          <span>MASTER CONTROLS</span>
+          <b>4 platforms selected</b>
+        </div>
+        <button>Save drafts</button>
+        <button>✦ Regenerate all copy</button>
+        <button>Schedule all</button>
+        <button className="primary">Publish selected platforms ↗</button>
+      </div>
+    </>
+  );
+}
 
-function Calendar(){const days=[...Array(35)].map((_,i)=>i<2||i>32?"":String(i-1));return <><Title eyebrow="PLANNING DESK" title="Editorial calendar" sub="Coordinate publication and social distribution across every desk." action={<button className="primary">＋ Schedule article</button>}/><div className="calendar-tools"><button>‹</button><h2>July 2026</h2><button>›</button><span/><button className="active">Month</button><button>Week</button></div><div className="calendar"><div className="weekdays">{["MON","TUE","WED","THU","FRI","SAT","SUN"].map(x=><b key={x}>{x}</b>)}</div><div className="days">{days.map((d,i)=><div className={d==="30"?"today":""} key={i}><span>{d}</span>{d&&i%6===1&&<article className="event gaming"><b>09:00</b> Community gravity in gaming</article>}{d&&i%8===3&&<article className="event ai"><b>14:00</b> AI early adopters</article>}{d==="30"&&<article className="event gaming"><b>LIVE</b> Halo Comes To PlayStation</article>}</div>)}</div></div></>}
-function Industries(){const [sel,setSel]=useState(industries[0]);return <><Title eyebrow="EDITORIAL DESKS" title="Industries" sub="Dedicated intelligence coverage across six community-driven markets."/><div className="industry-cards">{industries.map(x=><button className={sel.name===x.name?"selected":""} onClick={()=>setSel(x)} key={x.name}><i style={{background:x.color}}/ ><span>{x.name}</span><strong>{x.count}</strong><small>published reports</small></button>)}</div><div className="desk-grid"><div className="panel"><span className="overline">{sel.name.toUpperCase()} COMMUNITY INTELLIGENCE</span><h2>{sel.name} desk</h2><p>Tracking community behaviour, narratives and strategic shifts shaping the {sel.name.toLowerCase()} industry.</p><div className="mini-stats"><div><b>{sel.count}</b><span>Articles</span></div><div><b>6</b><span>Frameworks used</span></div><div><b>42.8K</b><span>Total views</span></div></div><h3>Latest intelligence</h3>{articles.filter(a=>a.industry===sel.name).map(a=><div className="story" key={a.title}><span>{a.date}</span><b>{a.title}</b><em>→</em></div>)}</div><div className="panel intel-index"><span>COMING SOON</span><h2>Community Intelligence Index</h2><p>A proprietary measure of community strength, trust and momentum across the {sel.name.toLowerCase()} market.</p><div className="radar">CI<br/><b>INDEX</b></div><button>View architecture →</button></div></div></>}
-function Frameworks(){const [sel,setSel]=useState(frameworks[0]);return <><Title eyebrow="RESEARCH METHODOLOGY" title="Frameworks" sub="The analytical systems behind every Community Intelligence report."/><div className="framework-layout"><div className="panel framework-list">{frameworks.map((f,i)=><button className={sel===f?"selected":""} key={f} onClick={()=>setSel(f)}><i>{String(i+1).padStart(2,"0")}</i><span>{f}</span><b>{3+i*2}</b></button>)}</div><div className="panel framework-detail"><span className="overline">CORE FRAMEWORK</span><h1>{sel}</h1><p>A structured way to understand how identity, participation and shared belief create durable strategic advantage around a product or organisation.</p><div className="mini-stats"><div><b>14</b><span>Usage count</span></div><div><b>5</b><span>Industries</span></div><div><b>3</b><span>Related frameworks</span></div></div><h3>Framework relationships</h3><div className="relationships"><span>Community Intelligence Stack</span><i>→</i><b>{sel}</b><i>→</i><span>Mission Premium</span></div><h3>Recent applications</h3>{articles.slice(0,3).map(a=><div className="story" key={a.title}><span>{a.industry}</span><b>{a.title}</b><em>→</em></div>)}</div></div></>}
-function Performance(){return <><Title eyebrow="INTELLIGENCE IMPACT" title="Performance" sub="Measure how research travels, resonates and compounds over time." action={<button className="secondary">Last 30 days⌄</button>}/><div className="stats performance-stats">{[["Website views","48,240","+18.4%"],["Avg. time on page","4m 12s","+8.1%"],["Social reach","126.8K","+24.6%"],["Link clicks","8,492","+11.2%"]].map(x=><div className="stat" key={x[0]}><span>{x[0]}</span><strong>{x[1]}</strong><small>{x[2]} vs prior period</small></div>)}</div><div className="charts"><div className="panel main-chart"><div className="panel-head"><div><h2>Historical performance</h2><p>Website views and social reach</p></div><span>● Views　<span className="orange">● Reach</span></span></div><div className="chart-bars">{[42,55,47,68,61,76,70,88,72,93,84,98].map((h,i)=><div key={i}><i style={{height:`${h}%`}}/><b style={{height:`${h*.62}%`}}/></div>)}</div><div className="chart-labels"><span>1 Jul</span><span>8 Jul</span><span>15 Jul</span><span>22 Jul</span><span>30 Jul</span></div></div><div className="panel source-list"><h2>Traffic sources</h2>{[["Direct","38%"],["LinkedIn","26%"],["Reddit","17%"],["Search","12%"],["Other","7%"]].map(x=><div key={x[0]}><span>{x[0]}</span><i><b style={{width:x[1]}}/></i><strong>{x[1]}</strong></div>)}</div></div><div className="platform-metrics">{["LinkedIn","Facebook","X"].map((x,i)=><div className="panel" key={x}><div><span className="channel-icon">{x[0]}</span><h3>{x}</h3><em>Integration ready</em></div><section><b>{["84.2K","28.4K","14.2K"][i]}</b><span>{i?"Reach":"Impressions"}</span><b>{["4,820","1,742","936"][i]}</b><span>Clicks</span></section></div>)}</div></>}
-function Repurpose(){const formats=["LinkedIn Personal","LinkedIn Company","Facebook","X","LinkedIn Carousel","Newsletter Summary","Executive Summary","Reddit Post","TikTok Script","YouTube Short Script","Podcast Talking Points"];const [sel,setSel]=useState(formats[0]);return <><Title eyebrow="CONTENT STUDIO" title="Repurpose" sub="Turn one intelligence report into a complete editorial campaign." action={<button className="secondary">Halo Comes To PlayStation⌄</button>}/><div className="repurpose-layout"><div className="panel format-list"><h3>11 formats</h3>{formats.map((f,i)=><button className={sel===f?"selected":""} key={f} onClick={()=>setSel(f)}><span>{i<4?"✓":"✦"}</span><div><b>{f}</b><small>{i<4?"Draft generated":"Ready to generate"}</small></div><em>›</em></button>)}</div><div className="panel repurpose-editor"><div className="editor-head"><div><span className="channel-icon">{sel[0]}</span><div><h2>{sel}</h2><p>Generated from the original analysis</p></div></div><button>✦ Regenerate</button></div><textarea defaultValue={copy[sel]||`The strategic story behind Halo's move to PlayStation, condensed for ${sel}.\n\nKey insight: community loyalty can outlive the platform that created it. This format translates the original Community Gravity analysis into a clear, useful narrative for a new audience.`}/><div className="counter"><span>Edited just now</span><b>Editable draft</b></div><div className="editor-actions"><button>Copy</button><button>Save draft</button><button className="primary">Mark complete ✓</button></div></div></div></>}
-function Settings(){const platforms=["LinkedIn Personal","LinkedIn Company","Facebook","X","Threads","Bluesky","Newsletter"];return <><Title eyebrow="NEWSROOM CONFIGURATION" title="Settings" sub="Prepare distribution channels and publication integrations."/><div className="settings-note"><b>Architecture ready for connection</b><p>Platform APIs are intentionally not active. Credentials and permissions can be added when each integration is approved.</p></div><div className="settings-grid">{platforms.map((x,i)=><div className="panel setting" key={x}><div><span className="channel-icon">{x[0]}</span><span className={i<2?"connection connected":"connection"}>{i<2?"● Connected":"○ Disconnected"}</span></div><h2>{x}</h2><p>{i<2?"Editorial publishing permission enabled.":"Connection architecture is prepared."}</p><footer><button>{i<2?"Reconnect":"Connect"}</button><button>Permissions →</button></footer></div>)}</div></>}
+function Calendar() {
+  const days = [...Array(35)].map((_, i) =>
+    i < 2 || i > 32 ? "" : String(i - 1),
+  );
+  return (
+    <>
+      <Title
+        eyebrow="PLANNING DESK"
+        title="Editorial calendar"
+        sub="Coordinate publication and social distribution across every desk."
+        action={<button className="primary">＋ Schedule article</button>}
+      />
+      <div className="calendar-tools">
+        <button>‹</button>
+        <h2>July 2026</h2>
+        <button>›</button>
+        <span />
+        <button className="active">Month</button>
+        <button>Week</button>
+      </div>
+      <div className="calendar">
+        <div className="weekdays">
+          {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((x) => (
+            <b key={x}>{x}</b>
+          ))}
+        </div>
+        <div className="days">
+          {days.map((d, i) => (
+            <div className={d === "30" ? "today" : ""} key={i}>
+              <span>{d}</span>
+              {d && i % 6 === 1 && (
+                <article className="event gaming">
+                  <b>09:00</b> Community gravity in gaming
+                </article>
+              )}
+              {d && i % 8 === 3 && (
+                <article className="event ai">
+                  <b>14:00</b> AI early adopters
+                </article>
+              )}
+              {d === "30" && (
+                <article className="event gaming">
+                  <b>LIVE</b> Halo Comes To PlayStation
+                </article>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+function Industries({ articles }: { articles: Article[] }) {
+  const [sel, setSel] = useState(industries[0]);
+  return (
+    <>
+      <Title
+        eyebrow="EDITORIAL DESKS"
+        title="Industries"
+        sub="Dedicated intelligence coverage across six community-driven markets."
+      />
+      <div className="industry-cards">
+        {industries.map((x) => (
+          <button
+            className={sel.name === x.name ? "selected" : ""}
+            onClick={() => setSel(x)}
+            key={x.name}
+          >
+            <i style={{ background: x.color }} />
+            <span>{x.name}</span>
+            <strong>{x.count}</strong>
+            <small>published reports</small>
+          </button>
+        ))}
+      </div>
+      <div className="desk-grid">
+        <div className="panel">
+          <span className="overline">
+            {sel.name.toUpperCase()} COMMUNITY INTELLIGENCE
+          </span>
+          <h2>{sel.name} desk</h2>
+          <p>
+            Tracking community behaviour, narratives and strategic shifts
+            shaping the {sel.name.toLowerCase()} industry.
+          </p>
+          <div className="mini-stats">
+            <div>
+              <b>{sel.count}</b>
+              <span>Articles</span>
+            </div>
+            <div>
+              <b>6</b>
+              <span>Frameworks used</span>
+            </div>
+            <div>
+              <b>42.8K</b>
+              <span>Total views</span>
+            </div>
+          </div>
+          <h3>Latest intelligence</h3>
+          {articles
+            .filter((a) => a.industry === sel.name)
+            .map((a) => (
+              <div className="story" key={a.title}>
+                <span>{a.date}</span>
+                <b>{a.title}</b>
+                <em>→</em>
+              </div>
+            ))}
+        </div>
+        <div className="panel intel-index">
+          <span>COMING SOON</span>
+          <h2>Community Intelligence Index</h2>
+          <p>
+            A proprietary measure of community strength, trust and momentum
+            across the {sel.name.toLowerCase()} market.
+          </p>
+          <div className="radar">
+            CI
+            <br />
+            <b>INDEX</b>
+          </div>
+          <button>View architecture →</button>
+        </div>
+      </div>
+    </>
+  );
+}
+function Frameworks({ articles }: { articles: Article[] }) {
+  const [sel, setSel] = useState(frameworks[0]);
+  return (
+    <>
+      <Title
+        eyebrow="RESEARCH METHODOLOGY"
+        title="Frameworks"
+        sub="The analytical systems behind every Community Intelligence report."
+      />
+      <div className="framework-layout">
+        <div className="panel framework-list">
+          {frameworks.map((f, i) => (
+            <button
+              className={sel === f ? "selected" : ""}
+              key={f}
+              onClick={() => setSel(f)}
+            >
+              <i>{String(i + 1).padStart(2, "0")}</i>
+              <span>{f}</span>
+              <b>{3 + i * 2}</b>
+            </button>
+          ))}
+        </div>
+        <div className="panel framework-detail">
+          <span className="overline">CORE FRAMEWORK</span>
+          <h1>{sel}</h1>
+          <p>
+            A structured way to understand how identity, participation and
+            shared belief create durable strategic advantage around a product or
+            organisation.
+          </p>
+          <div className="mini-stats">
+            <div>
+              <b>14</b>
+              <span>Usage count</span>
+            </div>
+            <div>
+              <b>5</b>
+              <span>Industries</span>
+            </div>
+            <div>
+              <b>3</b>
+              <span>Related frameworks</span>
+            </div>
+          </div>
+          <h3>Framework relationships</h3>
+          <div className="relationships">
+            <span>Community Intelligence Stack</span>
+            <i>→</i>
+            <b>{sel}</b>
+            <i>→</i>
+            <span>Mission Premium</span>
+          </div>
+          <h3>Recent applications</h3>
+          {articles.slice(0, 3).map((a) => (
+            <div className="story" key={a.title}>
+              <span>{a.industry}</span>
+              <b>{a.title}</b>
+              <em>→</em>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+function Performance() {
+  return (
+    <>
+      <Title
+        eyebrow="INTELLIGENCE IMPACT"
+        title="Performance"
+        sub="Measure how research travels, resonates and compounds over time."
+        action={<button className="secondary">Last 30 days⌄</button>}
+      />
+      <div className="stats performance-stats">
+        {[
+          ["Website views", "48,240", "+18.4%"],
+          ["Avg. time on page", "4m 12s", "+8.1%"],
+          ["Social reach", "126.8K", "+24.6%"],
+          ["Link clicks", "8,492", "+11.2%"],
+        ].map((x) => (
+          <div className="stat" key={x[0]}>
+            <span>{x[0]}</span>
+            <strong>{x[1]}</strong>
+            <small>{x[2]} vs prior period</small>
+          </div>
+        ))}
+      </div>
+      <div className="charts">
+        <div className="panel main-chart">
+          <div className="panel-head">
+            <div>
+              <h2>Historical performance</h2>
+              <p>Website views and social reach</p>
+            </div>
+            <span>
+              ● Views　<span className="orange">● Reach</span>
+            </span>
+          </div>
+          <div className="chart-bars">
+            {[42, 55, 47, 68, 61, 76, 70, 88, 72, 93, 84, 98].map((h, i) => (
+              <div key={i}>
+                <i style={{ height: `${h}%` }} />
+                <b style={{ height: `${h * 0.62}%` }} />
+              </div>
+            ))}
+          </div>
+          <div className="chart-labels">
+            <span>1 Jul</span>
+            <span>8 Jul</span>
+            <span>15 Jul</span>
+            <span>22 Jul</span>
+            <span>30 Jul</span>
+          </div>
+        </div>
+        <div className="panel source-list">
+          <h2>Traffic sources</h2>
+          {[
+            ["Direct", "38%"],
+            ["LinkedIn", "26%"],
+            ["Reddit", "17%"],
+            ["Search", "12%"],
+            ["Other", "7%"],
+          ].map((x) => (
+            <div key={x[0]}>
+              <span>{x[0]}</span>
+              <i>
+                <b style={{ width: x[1] }} />
+              </i>
+              <strong>{x[1]}</strong>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="platform-metrics">
+        {["LinkedIn", "Facebook", "X"].map((x, i) => (
+          <div className="panel" key={x}>
+            <div>
+              <span className="channel-icon">{x[0]}</span>
+              <h3>{x}</h3>
+              <em>Integration ready</em>
+            </div>
+            <section>
+              <b>{["84.2K", "28.4K", "14.2K"][i]}</b>
+              <span>{i ? "Reach" : "Impressions"}</span>
+              <b>{["4,820", "1,742", "936"][i]}</b>
+              <span>Clicks</span>
+            </section>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+function Repurpose() {
+  const formats = [
+    "LinkedIn Personal",
+    "LinkedIn Company",
+    "Facebook",
+    "X",
+    "LinkedIn Carousel",
+    "Newsletter Summary",
+    "Executive Summary",
+    "Reddit Post",
+    "TikTok Script",
+    "YouTube Short Script",
+    "Podcast Talking Points",
+  ];
+  const [sel, setSel] = useState(formats[0]);
+  return (
+    <>
+      <Title
+        eyebrow="CONTENT STUDIO"
+        title="Repurpose"
+        sub="Turn one intelligence report into a complete editorial campaign."
+        action={
+          <button className="secondary">Halo Comes To PlayStation⌄</button>
+        }
+      />
+      <div className="repurpose-layout">
+        <div className="panel format-list">
+          <h3>11 formats</h3>
+          {formats.map((f, i) => (
+            <button
+              className={sel === f ? "selected" : ""}
+              key={f}
+              onClick={() => setSel(f)}
+            >
+              <span>{i < 4 ? "✓" : "✦"}</span>
+              <div>
+                <b>{f}</b>
+                <small>{i < 4 ? "Draft generated" : "Ready to generate"}</small>
+              </div>
+              <em>›</em>
+            </button>
+          ))}
+        </div>
+        <div className="panel repurpose-editor">
+          <div className="editor-head">
+            <div>
+              <span className="channel-icon">{sel[0]}</span>
+              <div>
+                <h2>{sel}</h2>
+                <p>Generated from the original analysis</p>
+              </div>
+            </div>
+            <button>✦ Regenerate</button>
+          </div>
+          <textarea
+            defaultValue={
+              copy[sel] ||
+              `The strategic story behind Halo's move to PlayStation, condensed for ${sel}.\n\nKey insight: community loyalty can outlive the platform that created it. This format translates the original Community Gravity analysis into a clear, useful narrative for a new audience.`
+            }
+          />
+          <div className="counter">
+            <span>Edited just now</span>
+            <b>Editable draft</b>
+          </div>
+          <div className="editor-actions">
+            <button>Copy</button>
+            <button>Save draft</button>
+            <button className="primary">Mark complete ✓</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+function Settings() {
+  const platforms = [
+    "LinkedIn Personal",
+    "LinkedIn Company",
+    "Facebook",
+    "X",
+    "Threads",
+    "Bluesky",
+    "Newsletter",
+  ];
+  return (
+    <>
+      <Title
+        eyebrow="NEWSROOM CONFIGURATION"
+        title="Settings"
+        sub="Prepare distribution channels and publication integrations."
+      />
+      <div className="settings-note">
+        <b>Architecture ready for connection</b>
+        <p>
+          Platform APIs are intentionally not active. Credentials and
+          permissions can be added when each integration is approved.
+        </p>
+      </div>
+      <div className="settings-grid">
+        {platforms.map((x, i) => (
+          <div className="panel setting" key={x}>
+            <div>
+              <span className="channel-icon">{x[0]}</span>
+              <span className={i < 2 ? "connection connected" : "connection"}>
+                {i < 2 ? "● Connected" : "○ Disconnected"}
+              </span>
+            </div>
+            <h2>{x}</h2>
+            <p>
+              {i < 2
+                ? "Editorial publishing permission enabled."
+                : "Connection architecture is prepared."}
+            </p>
+            <footer>
+              <button>{i < 2 ? "Reconnect" : "Connect"}</button>
+              <button>Permissions →</button>
+            </footer>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
