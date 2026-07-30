@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import Image from "next/image";
+import ProfileMenu from "./profile-menu";
 import type { Article } from "../lib/articles";
 
 type Page =
@@ -104,6 +105,7 @@ const frameworks = [
 const channels = [
   "LinkedIn Personal",
   "LinkedIn Company",
+  "Instagram",
   "Facebook Page",
   "X",
 ];
@@ -112,6 +114,8 @@ const copy: Record<string, string> = {
     "Halo coming to PlayStation isn’t just a platform shift. It’s a live case study in community gravity.\n\nFor twenty years, the franchise helped define Xbox identity. Now Microsoft is testing whether the community belongs to the platform—or to Halo itself.\n\nOur latest Community Intelligence analysis breaks down what happens next.",
   "LinkedIn Company":
     "NEW ANALYSIS — Halo Comes To PlayStation\n\nWhat happens when a platform-defining franchise crosses the boundary that made it culturally powerful? We examine the community signals, strategic trade-offs and the future of Xbox identity.",
+  Instagram:
+    "New Community Intelligence research from The Redditrepreneur.\n\nThe strongest communities do more than react to changeâ€”they help explain what it means. Read the full analysis through the link in bio.\n\n#CommunityIntelligence #TheRedditrepreneur",
   "Facebook Page":
     "Halo is coming to PlayStation. For players, that’s big news. For Microsoft, it’s a high-stakes test of where community loyalty really lives. Read our latest Gaming Community Intelligence analysis.",
   X: "Halo on PlayStation is more than a platform shift. It’s a test of community gravity—and whether loyalty belongs to Xbox or to the franchise itself. Our latest analysis ↓",
@@ -161,11 +165,14 @@ export default function Newsroom({
     <div className="app-shell">
       <aside className={mobile ? "sidebar open" : "sidebar"}>
         <div className="brand">
-          <div className="brand-mark">R</div>
-          <div>
-            <strong>THE REDDITREPRENEUR</strong>
-            <span>NEWSROOM</span>
-          </div>
+          <Image
+            src="/redditpreneur-logo.png"
+            alt="The Redditrepreneur"
+            width={210}
+            height={92}
+            priority
+          />
+          <span>NEWSROOM</span>
         </div>
         <nav>
           {nav.map((n) => (
@@ -184,14 +191,7 @@ export default function Newsroom({
           <span className="live-dot" />
           NEWSROOM LIVE<strong>Thursday, 30 July</strong>
         </div>
-        <div className="profile">
-          <div className="avatar">TR</div>
-          <div>
-            <strong>Editor-in-Chief</strong>
-            <span>{authConfigured ? "Supabase protected" : "Configuration required"}</span>
-          </div>
-          {authConfigured && <Link href="/auth/signout" aria-label="Sign out">•••</Link>}
-        </div>
+        <ProfileMenu configured={authConfigured} />
       </aside>
       {mobile && (
         <button
@@ -241,7 +241,7 @@ export default function Newsroom({
           {page === "Industries" && <Industries articles={articles} />}{" "}
           {page === "Frameworks" && <Frameworks articles={articles} />}{" "}
           {page === "Performance" && <Performance />}{" "}
-          {page === "Repurpose" && <Repurpose />}{" "}
+          {page === "Repurpose" && <Repurpose articles={articles} />}{" "}
           {page === "Settings" && <Settings />}
         </section>
       </main>
@@ -273,7 +273,13 @@ function Title({
     </div>
   );
 }
-function Dashboard({ go, articles }: { go: (p: Page) => void; articles: Article[] }) {
+function Dashboard({
+  go,
+  articles,
+}: {
+  go: (p: Page) => void;
+  articles: Article[];
+}) {
   return (
     <>
       <Title
@@ -320,7 +326,11 @@ function Dashboard({ go, articles }: { go: (p: Page) => void; articles: Article[
             </div>
             <button onClick={() => go("Articles")}>View all →</button>
           </div>
-          <ArticleTable articles={articles} compact open={() => go("Distribution")} />
+          <ArticleTable
+            articles={articles}
+            compact
+            open={() => go("Distribution")}
+          />
         </div>
         <div className="panel coverage">
           <div className="panel-head">
@@ -408,7 +418,15 @@ function ArticleTable({
           {articles.slice(0, compact ? 4 : 9).map((a) => (
             <tr key={a.title}>
               <td>
-                <strong>{a.title}</strong>
+                <strong>
+                  {a.url ? (
+                    <a href={a.url} target="_blank" rel="noreferrer">
+                      {a.title}
+                    </a>
+                  ) : (
+                    a.title
+                  )}
+                </strong>
                 <small>{a.framework}</small>
               </td>
               <td>
@@ -923,10 +941,34 @@ function Performance() {
     </>
   );
 }
-function Repurpose() {
+function buildRepurpose(article: Article, format: string) {
+  const insight =
+    article.summary ||
+    `${article.title} examines the community signals shaping ${article.industry.toLowerCase()}.`;
+  const url = article.url || "https://blog.theredditrepreneur.com";
+  const lead = `${article.title}\n\n${insight}`;
+  const versions: Record<string, string> = {
+    "LinkedIn Personal": `${lead}\n\nThis is what Community Intelligence makes visible: the meaning behind the conversation, not only the volume.\n\nRead the full analysis: ${url}`,
+    "LinkedIn Company": `NEW RESEARCH — ${article.title}\n\n${insight}\n\nThe Redditrepreneur translates community conversations into strategic intelligence.\n\n${url}`,
+    Instagram: `${article.title}\n\n${insight}\n\nRead the full Community Intelligence analysis through the link in bio.\n\n#CommunityIntelligence #TheRedditrepreneur #${article.industry.replace(/\s/g, "")}`,
+    Facebook: `${lead}\n\nRead the full analysis from The Redditrepreneur: ${url}`,
+    X: `${article.title}\n\n${insight.slice(0, 140)}\n\n${url}`,
+    "Newsletter Summary": `${article.title}\n\n${insight}\n\nWhy it matters: this story reveals how community trust, belief and behaviour are changing in ${article.industry.toLowerCase()}.`,
+    "Executive Summary": `Executive summary\n\nSubject: ${article.title}\nIndustry: ${article.industry}\nFramework: ${article.framework}\n\nCore finding: ${insight}\n\nStrategic implication: organisations should treat community response as decision-grade evidence rather than background noise.`,
+    "Reddit Post": `${article.title}\n\n${insight}\n\nWhat are you seeing in the communities you participate in?`,
+    "TikTok Script": `HOOK: ${article.title}\n\nHere’s what most people are missing. ${insight}\n\nThe bigger story is about community trust and behaviour. Follow The Redditrepreneur for more Community Intelligence.`,
+    "YouTube Short Script": `TITLE: ${article.title}\n\n[OPEN] ${insight}\n\n[INSIGHT] The community reaction tells us more than the announcement alone.\n\n[CLOSE] Read the full analysis at The Redditrepreneur.`,
+    "Podcast Talking Points": `• ${article.title}\n• Context: ${insight}\n• Community signal to watch\n• Implications for ${article.industry}\n• How ${article.framework} explains the shift\n• What leaders should do next`,
+    "LinkedIn Carousel": `SLIDE 1 — ${article.title}\nSLIDE 2 — What happened\n${insight}\nSLIDE 3 — The community signal\nTrust and behaviour are shifting.\nSLIDE 4 — Why it matters\nCommunity response is strategic evidence.\nSLIDE 5 — Read the full analysis\n${url}`,
+  };
+  return versions[format] || lead;
+}
+
+function Repurpose({ articles }: { articles: Article[] }) {
   const formats = [
     "LinkedIn Personal",
     "LinkedIn Company",
+    "Instagram",
     "Facebook",
     "X",
     "LinkedIn Carousel",
@@ -938,6 +980,21 @@ function Repurpose() {
     "Podcast Talking Points",
   ];
   const [sel, setSel] = useState(formats[0]);
+  const [articleIndex, setArticleIndex] = useState(0);
+  const article = articles[articleIndex] || fallbackArticles[0];
+  const [draft, setDraft] = useState(() => buildRepurpose(article, formats[0]));
+  const [saved, setSaved] = useState(false);
+  const chooseFormat = (format: string) => {
+    setSel(format);
+    setDraft(buildRepurpose(article, format));
+    setSaved(false);
+  };
+  const chooseArticle = (index: number) => {
+    const next = articles[index] || fallbackArticles[0];
+    setArticleIndex(index);
+    setDraft(buildRepurpose(next, sel));
+    setSaved(false);
+  };
   return (
     <>
       <Title
@@ -945,17 +1002,27 @@ function Repurpose() {
         title="Repurpose"
         sub="Turn one intelligence report into a complete editorial campaign."
         action={
-          <button className="secondary">Halo Comes To PlayStation⌄</button>
+          <select
+            className="article-select"
+            value={articleIndex}
+            onChange={(event) => chooseArticle(Number(event.target.value))}
+          >
+            {articles.map((item, index) => (
+              <option value={index} key={item.url || item.title}>
+                {item.title}
+              </option>
+            ))}
+          </select>
         }
       />
       <div className="repurpose-layout">
         <div className="panel format-list">
-          <h3>11 formats</h3>
+          <h3>{formats.length} formats</h3>
           {formats.map((f, i) => (
             <button
               className={sel === f ? "selected" : ""}
               key={f}
-              onClick={() => setSel(f)}
+              onClick={() => chooseFormat(f)}
             >
               <span>{i < 4 ? "✓" : "✦"}</span>
               <div>
@@ -975,22 +1042,31 @@ function Repurpose() {
                 <p>Generated from the original analysis</p>
               </div>
             </div>
-            <button>✦ Regenerate</button>
+            <button onClick={() => setDraft(buildRepurpose(article, sel))}>
+              ✦ Regenerate
+            </button>
           </div>
           <textarea
-            defaultValue={
-              copy[sel] ||
-              `The strategic story behind Halo's move to PlayStation, condensed for ${sel}.\n\nKey insight: community loyalty can outlive the platform that created it. This format translates the original Community Gravity analysis into a clear, useful narrative for a new audience.`
-            }
+            value={draft}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setSaved(false);
+            }}
           />
           <div className="counter">
-            <span>Edited just now</span>
-            <b>Editable draft</b>
+            <span>
+              {saved ? "Draft saved for this session" : "Edited just now"}
+            </span>
+            <b>{draft.length} characters</b>
           </div>
           <div className="editor-actions">
-            <button>Copy</button>
-            <button>Save draft</button>
-            <button className="primary">Mark complete ✓</button>
+            <button onClick={() => navigator.clipboard.writeText(draft)}>
+              Copy
+            </button>
+            <button onClick={() => setSaved(true)}>Save draft</button>
+            <button className="primary" onClick={() => setSaved(true)}>
+              Mark complete ✓
+            </button>
           </div>
         </div>
       </div>
@@ -1001,6 +1077,7 @@ function Settings() {
   const platforms = [
     "LinkedIn Personal",
     "LinkedIn Company",
+    "Instagram",
     "Facebook",
     "X",
     "Threads",
@@ -1022,23 +1099,24 @@ function Settings() {
         </p>
       </div>
       <div className="settings-grid">
-        {platforms.map((x, i) => (
+        {platforms.map((x) => (
           <div className="panel setting" key={x}>
             <div>
               <span className="channel-icon">{x[0]}</span>
-              <span className={i < 2 ? "connection connected" : "connection"}>
-                {i < 2 ? "● Connected" : "○ Disconnected"}
-              </span>
+              <span className="connection">○ Ready to connect</span>
             </div>
             <h2>{x}</h2>
             <p>
-              {i < 2
-                ? "Editorial publishing permission enabled."
-                : "Connection architecture is prepared."}
+              Secure OAuth connection architecture is prepared. No account is
+              connected yet.
             </p>
             <footer>
-              <button>{i < 2 ? "Reconnect" : "Connect"}</button>
-              <button>Permissions →</button>
+              <button title="Add the platform developer credentials in Vercel first">
+                Connect
+              </button>
+              <button title="Permissions are granted during the platform OAuth flow">
+                Permissions →
+              </button>
             </footer>
           </div>
         ))}
