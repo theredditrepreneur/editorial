@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createBrowserClient } from "@supabase/ssr";
 import Image from "next/image";
 import ProfileMenu from "./profile-menu";
 import type { Article } from "../lib/articles";
@@ -39,37 +38,6 @@ const industries = [
   { name: "Entertainment", count: 8, color: "#7c58a5" },
   { name: "SaaS", count: 7, color: "#b78520" },
 ];
-const frameworks = [
-  "Community Intelligence Stack",
-  "Community Gravity",
-  "Customer Insight Triangle",
-  "Belief Correction",
-  "Narrative Compression",
-  "Trust Collapse",
-  "Mission Premium",
-  "Community Intelligence Scorecard",
-];
-const channels = [
-  "LinkedIn Personal",
-  "LinkedIn Company",
-  "Instagram",
-  "Facebook Page",
-  "X",
-];
-function buildDistributionCopy(article: Article): Record<string, string> {
-  const summary =
-    article.summary ||
-    `${article.title} examines the community signals shaping ${article.industry}.`;
-  const url = article.url || "https://blog.theredditrepreneur.com";
-  return {
-    "LinkedIn Personal": `${article.title}\n\n${summary}\n\nHere is what the community response tells us—and why it matters.\n\nRead the full analysis: ${url}`,
-    "LinkedIn Company": `NEW COMMUNITY INTELLIGENCE — ${article.title}\n\n${summary}\n\nRead the full research from The Redditrepreneur: ${url}`,
-    Instagram: `${article.title}\n\n${summary}\n\nRead the full analysis through the link in bio.\n\n#CommunityIntelligence #TheRedditrepreneur #${article.industry.replace(/\s/g, "")}`,
-    "Facebook Page": `${article.title}\n\n${summary}\n\nRead the full analysis: ${url}`,
-    X: `${article.title}\n\n${summary.slice(0, 145)}\n\n${url}`,
-  };
-}
-
 const paths: Record<Page, string> = {
   Dashboard: "/",
   Articles: "/articles",
@@ -146,7 +114,6 @@ export default function Newsroom({
             >
               <i>{n.icon}</i>
               {n.name}
-              {n.name === "Distribution" && <b>2</b>}
             </button>
           ))}
         </nav>
@@ -283,7 +250,11 @@ function Dashboard({
             "Live publication archive",
           ],
           ["Drafts", "0", "No draft source connected"],
-          ["Awaiting distribution", String(articles.length), "Select a report"],
+          [
+            "Distribution tracker",
+            String(articles.length),
+            "Check each report",
+          ],
           ["Scheduled", "0", "No schedules yet"],
           ["Latest publication", latest.date, latest.industry],
           ["Website views", "—", "Analytics not connected"],
@@ -340,28 +311,25 @@ function Dashboard({
 }
 function Workflow() {
   const steps = [
-    "Idea",
-    "Research",
-    "Draft",
     "Published",
-    "Distribution",
-    "Performance",
-    "Repurpose",
-    "Archive",
+    "Create in Buffer",
+    "Post",
+    "Tick off",
+    "Complete",
   ];
   return (
     <div className="panel workflow">
       <div className="panel-head">
         <div>
           <h2>The publication workflow</h2>
-          <p>From first signal to enduring intelligence</p>
+          <p>From live article to completed social distribution</p>
         </div>
         <span>EDITORIAL OPERATING SYSTEM</span>
       </div>
       <div className="workflow-steps">
         {steps.map((x, i) => (
-          <div key={x} className={i === 4 ? "current" : ""}>
-            <i>{i < 3 ? "✓" : i + 1}</i>
+          <div key={x} className={i === 1 ? "current" : ""}>
+            <i>{i + 1}</i>
             <b>{x}</b>
             {i < steps.length - 1 && <em>→</em>}
           </div>
@@ -417,13 +385,7 @@ function ArticleTable({
                 </span>
               </td>
               <td>
-                <span
-                  className={
-                    a.distribution.startsWith("Not") ? "muted" : "progress"
-                  }
-                >
-                  {a.distribution}
-                </span>
+                <DistributionStatus article={a} />
               </td>
               <td>{a.date}</td>
               <td>
@@ -436,6 +398,35 @@ function ArticleTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+function DistributionStatus({ article }: { article: Article }) {
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const raw = window.localStorage.getItem(
+          `newsroom-distribution:${article.url || article.title}`,
+        );
+        const saved = raw
+          ? (JSON.parse(raw) as { completed?: Record<string, boolean> })
+          : null;
+        setCount(Object.values(saved?.completed || {}).filter(Boolean).length);
+      } catch {
+        setCount(0);
+      }
+    });
+  }, [article.title, article.url]);
+  if (count === null) return <span className="muted">Loading…</span>;
+  return (
+    <span className={count ? "progress" : "muted"}>
+      {count === 8
+        ? "Complete"
+        : count
+          ? `${count} of 8 posted`
+          : "Not started"}
+    </span>
   );
 }
 function Articles({
@@ -514,6 +505,173 @@ function Articles({
 }
 
 function Distribution({ article }: { article: Article }) {
+  const trackingChannels = [
+    "LinkedIn Personal",
+    "LinkedIn Company",
+    "Facebook",
+    "Instagram",
+    "X",
+    "Threads",
+    "Bluesky",
+    "Newsletter",
+  ];
+  const storageKey = `newsroom-distribution:${article.url || article.title}`;
+  const [completed, setCompleted] = useState<Record<string, boolean>>({});
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      try {
+        const saved = window.localStorage.getItem(storageKey);
+        if (saved) {
+          const parsed = JSON.parse(saved) as {
+            completed?: Record<string, boolean>;
+            updatedAt?: string;
+          };
+          setCompleted(parsed.completed || {});
+          setUpdatedAt(parsed.updatedAt || null);
+        } else {
+          setCompleted({});
+          setUpdatedAt(null);
+        }
+      } catch {
+        setCompleted({});
+      }
+      setReady(true);
+    });
+  }, [storageKey]);
+
+  const toggleChannel = (channel: string) => {
+    const next = { ...completed, [channel]: !completed[channel] };
+    const savedAt = new Date().toISOString();
+    setCompleted(next);
+    setUpdatedAt(savedAt);
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ completed: next, updatedAt: savedAt }),
+    );
+  };
+  const completedCount = trackingChannels.filter(
+    (channel) => completed[channel],
+  ).length;
+  const progress = Math.round((completedCount / trackingChannels.length) * 100);
+
+  return (
+    <>
+      <Title
+        eyebrow="DISTRIBUTION TRACKER"
+        title={article.title}
+        sub={`${article.industry} · Published ${article.date}`}
+        action={
+          <div className="tracker-actions">
+            {article.url && (
+              <a
+                className="button secondary"
+                href={article.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View article ↗
+              </a>
+            )}
+            <a
+              className="button primary"
+              href="https://publish.buffer.com/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Buffer ↗
+            </a>
+          </div>
+        }
+      />
+      <div className="distribution-head tracker-head">
+        <div className="hero-preview">
+          <div className="halo">{article.title}</div>
+          <small>THE REDDITREPRENEUR</small>
+        </div>
+        <div>
+          <span className="status published">● Live on publication</span>
+          <h3>Distribution progress</h3>
+          <div className="big-progress">
+            <i style={{ width: `${progress}%` }} />
+          </div>
+          <p>
+            <b>
+              {completedCount} of {trackingChannels.length} complete
+            </b>{" "}
+            · {progress}% distributed
+          </p>
+        </div>
+        <div className="lifecycle">
+          <span>Last checklist update</span>
+          <b>
+            {updatedAt
+              ? new Date(updatedAt).toLocaleDateString("en-GB")
+              : "Not started"}
+          </b>
+          <p>Post through Buffer, then tick off each destination here.</p>
+        </div>
+      </div>
+      <div className="panel distribution-tracker">
+        <div className="tracker-intro">
+          <div>
+            <span className="overline">MANUAL DISTRIBUTION CHECKLIST</span>
+            <h2>Where has this article been posted?</h2>
+            <p>
+              Tick a platform only after its post is live. Every article keeps
+              its own checklist.
+            </p>
+          </div>
+          {completedCount === trackingChannels.length && (
+            <strong className="tracker-complete">
+              ✓ Distribution complete
+            </strong>
+          )}
+        </div>
+        <div className="tracker-grid">
+          {trackingChannels.map((channel) => (
+            <label
+              className={
+                completed[channel] ? "tracker-item complete" : "tracker-item"
+              }
+              key={channel}
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(completed[channel])}
+                disabled={!ready}
+                onChange={() => toggleChannel(channel)}
+              />
+              <span className="tracker-check">
+                {completed[channel] ? "✓" : ""}
+              </span>
+              <span>
+                <b>{channel}</b>
+                <small>
+                  {completed[channel]
+                    ? "Posted and checked off"
+                    : "Awaiting distribution"}
+                </small>
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <div className="tracker-note">
+        <b>Buffer is now your publishing system.</b>
+        <span>
+          The Newsroom only tracks coverage and never connects to or publishes
+          on social accounts.
+        </span>
+      </div>
+    </>
+  );
+}
+
+/* Legacy direct-publishing interface removed in favour of Buffer tracking.
+function LegacyDistribution({ article }: { article: Article }) {
   const [texts, setTexts] = useState(() => buildDistributionCopy(article));
   const [tab, setTab] = useState(channels[0]);
   const [notice, setNotice] = useState("");
@@ -898,6 +1056,8 @@ function Distribution({ article }: { article: Article }) {
   );
 }
 
+*/
+
 function Calendar({ articles }: { articles: Article[] }) {
   const days = [...Array(35)].map((_, i) =>
     i < 2 || i > 32 ? "" : String(i - 1),
@@ -952,6 +1112,7 @@ function Calendar({ articles }: { articles: Article[] }) {
     </>
   );
 }
+/* Removed newsroom sections: Industries, Frameworks, Performance and Repurpose.
 function Industries({ articles }: { articles: Article[] }) {
   const desks = industries.map((desk) => ({
     ...desk,
@@ -1348,7 +1509,65 @@ function Repurpose({ articles }: { articles: Article[] }) {
     </>
   );
 }
+*/
+
 function Settings() {
+  return (
+    <>
+      <Title
+        eyebrow="NEWSROOM CONFIGURATION"
+        title="Settings"
+        sub="The Newsroom tracks distribution; Buffer handles social publishing."
+      />
+      <div className="settings-note buffer-note">
+        <div>
+          <span className="overline">PUBLISHING WORKFLOW</span>
+          <h2>Buffer is your social publishing centre</h2>
+          <p>
+            Create and schedule posts in Buffer, then return to each article’s
+            Distribution page and tick off the platforms that are live.
+          </p>
+        </div>
+        <a
+          className="button primary"
+          href="https://publish.buffer.com/"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open Buffer ↗
+        </a>
+      </div>
+      <div className="panel workflow-card">
+        <span className="overline">SIMPLE WORKFLOW</span>
+        <div className="buffer-workflow">
+          {[
+            "Article published",
+            "Create posts in Buffer",
+            "Publish or schedule",
+            "Tick off platforms",
+          ].map((step, index) => (
+            <div key={step}>
+              <i>{index + 1}</i>
+              <b>{step}</b>
+              {index < 3 && <span>→</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="settings-note privacy-note">
+        <b>No social account connections are required.</b>
+        <p>
+          The Newsroom does not store social passwords, access tokens, API keys,
+          drafts, or media. Your existing Buffer connections remain entirely in
+          Buffer.
+        </p>
+      </div>
+    </>
+  );
+}
+
+/* Legacy OAuth connection centre removed; Buffer owns social connections.
+function LegacySettings() {
   const [setup, setSetup] = useState<string | null>(null);
   const [connectionMessage, setConnectionMessage] = useState("");
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
@@ -1530,3 +1749,5 @@ function Settings() {
     </>
   );
 }
+
+*/
