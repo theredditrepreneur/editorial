@@ -220,48 +220,12 @@ async function publishLinkedIn(
   );
   let author: string;
   if (company) {
-    const headers = {
-      authorization: `Bearer ${token.access_token}`,
-      "linkedin-version": "202607",
-      "x-restli-protocol-version": "2.0.0",
-    };
-    const aclResponse = await fetch(
-      "https://api.linkedin.com/rest/organizationAcls?q=roleAssignee&role=ADMINISTRATOR&state=APPROVED",
-      { headers, cache: "no-store" },
-    );
-    const acl = (await aclResponse.json()) as {
-      elements?: Array<{ organization?: string }>;
-      message?: string;
-    };
-    if (!aclResponse.ok || !acl.elements?.length)
+    const organizationId = process.env.LINKEDIN_ORGANIZATION_ID?.trim();
+    if (!organizationId || !/^\d+$/.test(organizationId))
       throw new Error(
-        acl.message ||
-          "No LinkedIn Company Page was found where the connected member is an administrator.",
+        "Add LINKEDIN_ORGANIZATION_ID to Vercel with The Redditrepreneur Page's numeric LinkedIn ID.",
       );
-    let chosen = acl.elements[0].organization;
-    for (const item of acl.elements) {
-      const id = item.organization?.split(":").pop();
-      if (!id) continue;
-      const organizationResponse = await fetch(
-        `https://api.linkedin.com/rest/organizations/${id}`,
-        { headers, cache: "no-store" },
-      );
-      if (!organizationResponse.ok) continue;
-      const organization = (await organizationResponse.json()) as {
-        localizedName?: string;
-      };
-      if (
-        organization.localizedName?.toLowerCase().includes("redditrepreneur")
-      ) {
-        chosen = item.organization;
-        break;
-      }
-    }
-    if (!chosen)
-      throw new Error(
-        "The Redditrepreneur LinkedIn Page could not be identified.",
-      );
-    author = chosen;
+    author = `urn:li:organization:${organizationId}`;
   } else {
     const profileResponse = await fetch(
       "https://api.linkedin.com/v2/userinfo",
@@ -277,25 +241,27 @@ async function publishLinkedIn(
       );
     author = `urn:li:person:${profile.sub}`;
   }
-  const response = await fetch("https://api.linkedin.com/rest/posts", {
+  // The UGC endpoint is covered by w_member_social/w_organization_social.
+  // LinkedIn's newer Posts endpoint requires separate partner API approval.
+  const response = await fetch("https://api.linkedin.com/v2/ugcPosts", {
     method: "POST",
     headers: {
       authorization: `Bearer ${token.access_token}`,
       "content-type": "application/json",
-      "linkedin-version": "202607",
       "x-restli-protocol-version": "2.0.0",
     },
     body: JSON.stringify({
       author,
-      commentary: text,
-      visibility: "PUBLIC",
-      distribution: {
-        feedDistribution: "MAIN_FEED",
-        targetEntities: [],
-        thirdPartyDistributionChannels: [],
-      },
       lifecycleState: "PUBLISHED",
-      isReshareDisabledByAuthor: false,
+      specificContent: {
+        "com.linkedin.ugc.ShareContent": {
+          shareCommentary: { text },
+          shareMediaCategory: "NONE",
+        },
+      },
+      visibility: {
+        "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC",
+      },
     }),
     cache: "no-store",
   });
@@ -303,7 +269,7 @@ async function publishLinkedIn(
     const error = await response.json();
     throw new Error(
       error.message ||
-        "LinkedIn rejected the post. Reconnect to grant Share on LinkedIn permission.",
+        `LinkedIn rejected the ${company ? "Company" : "Personal"} post. Reconnect it in Settings and confirm its publishing product is approved.`,
     );
   }
   const id = response.headers.get("x-restli-id") || undefined;
