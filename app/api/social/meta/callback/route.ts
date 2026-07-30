@@ -1,5 +1,6 @@
 import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { newsroomUrl } from "../../../../../lib/social-connection";
 
 function encrypt(value: string) {
   const key = createHash("sha256")
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(destination);
   }
 
-  const callback = new URL("/api/social/meta/callback", request.url);
+  const callback = newsroomUrl("/api/social/meta/callback");
   const tokenUrl = new URL("https://graph.facebook.com/oauth/access_token");
   tokenUrl.searchParams.set("client_id", process.env.META_APP_ID!);
   tokenUrl.searchParams.set("client_secret", process.env.META_APP_SECRET!);

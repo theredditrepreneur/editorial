@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   connectionCookie,
+  newsroomUrl,
   sealConnection,
 } from "../../../../../lib/social-connection";
 
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
     destination.searchParams.set("connection", "denied");
     return NextResponse.redirect(destination);
   }
-  const callback = new URL("/api/social/threads/callback", request.url);
+  const callback = newsroomUrl("/api/social/threads/callback");
   const body = new URLSearchParams({
     client_id: process.env.THREADS_APP_ID!,
     client_secret: process.env.THREADS_APP_SECRET!,

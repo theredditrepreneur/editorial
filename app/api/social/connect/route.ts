@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   connectionCookie,
+  newsroomUrl,
   sealConnection,
 } from "../../../../lib/social-connection";
 
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
 
   if (["Facebook", "Instagram"].includes(platform)) {
     const state = randomBytes(24).toString("hex");
-    const callback = new URL("/api/social/meta/callback", request.url);
+    const callback = newsroomUrl("/api/social/meta/callback");
     const authorization = new URL("https://www.facebook.com/dialog/oauth");
     authorization.searchParams.set("client_id", process.env.META_APP_ID!);
     authorization.searchParams.set("redirect_uri", callback.toString());
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
 
   if (platform.startsWith("LinkedIn")) {
     const state = randomBytes(24).toString("hex");
-    const callback = new URL("/api/social/linkedin/callback", request.url);
+    const callback = newsroomUrl("/api/social/linkedin/callback");
     const authorization = new URL(
       "https://www.linkedin.com/oauth/v2/authorization",
     );
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
     const state = randomBytes(24).toString("hex");
     const verifier = randomBytes(48).toString("base64url");
     const challenge = createHash("sha256").update(verifier).digest("base64url");
-    const callback = new URL("/api/social/x/callback", request.url);
+    const callback = newsroomUrl("/api/social/x/callback");
     const authorization = new URL("https://x.com/i/oauth2/authorize");
     authorization.searchParams.set("response_type", "code");
     authorization.searchParams.set("client_id", process.env.X_CLIENT_ID!);
@@ -138,7 +139,7 @@ export async function GET(request: NextRequest) {
 
   if (platform === "Threads") {
     const state = randomBytes(24).toString("hex");
-    const callback = new URL("/api/social/threads/callback", request.url);
+    const callback = newsroomUrl("/api/social/threads/callback");
     const authorization = new URL("https://threads.net/oauth/authorize");
     authorization.searchParams.set("client_id", process.env.THREADS_APP_ID!);
     authorization.searchParams.set("redirect_uri", callback.toString());

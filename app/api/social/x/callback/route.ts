@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   connectionCookie,
+  newsroomUrl,
   sealConnection,
 } from "../../../../../lib/social-connection";
 
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     destination.searchParams.set("connection", "denied");
     return NextResponse.redirect(destination);
   }
-  const callback = new URL("/api/social/x/callback", request.url);
+  const callback = newsroomUrl("/api/social/x/callback");
   const body = new URLSearchParams({
     code,
     grant_type: "authorization_code",

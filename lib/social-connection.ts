@@ -19,3 +19,10 @@ export const connectionCookie = {
   sameSite: "lax" as const,
   path: "/",
 };
+
+export function newsroomUrl(path: string) {
+  return new URL(
+    path,
+    process.env.NEWSROOM_URL || "https://editorial.theredditrepreneur.com",
+  );
+}
