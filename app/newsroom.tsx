@@ -536,9 +536,7 @@ function Articles({
 function Distribution({ article }: { article: Article }) {
   const [texts, setTexts] = useState(() => buildDistributionCopy(article));
   const [tab, setTab] = useState(channels[0]);
-  const [notice, setNotice] = useState(
-    "Drafts are saved in this browser session",
-  );
+  const [notice, setNotice] = useState("");
   const [media, setMedia] = useState<
     Array<{ name: string; type: string; preview: string; url?: string }>
   >([]);
@@ -601,26 +599,35 @@ function Distribution({ article }: { article: Article }) {
     );
   };
   const publish = async (platform: string) => {
-    setPublishing(true);
-    setNotice(`Publishing to ${platform}…`);
-    const response = await fetch("/api/social/publish", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        platform,
-        text: texts[platform],
-        media: media.map((item) => ({ url: item.url, type: item.type })),
-      }),
-    });
-    const result = await response.json();
-    setPublishing(false);
-    if (!response.ok) {
-      setNotice(result.error || `${platform} publishing failed.`);
-      return;
+    try {
+      setPublishing(true);
+      setNotice(`Publishing to ${platform}…`);
+      const response = await fetch("/api/social/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          platform,
+          text: texts[platform],
+          media: media.map((item) => ({ url: item.url, type: item.type })),
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setNotice(
+          `Could not publish to ${platform}: ${result.error || "Provider rejected the post."}`,
+        );
+        return;
+      }
+      setNotice(
+        `${platform} post published successfully${result.url ? ` · ${result.url}` : ""}`,
+      );
+    } catch (error) {
+      setNotice(
+        `Could not publish to ${platform}: ${error instanceof Error ? error.message : "Network request failed."}`,
+      );
+    } finally {
+      setPublishing(false);
     }
-    setNotice(
-      `${platform} post published successfully${result.url ? ` · ${result.url}` : ""}`,
-    );
   };
   const publishSelected = async () => {
     const selected = channels.filter(
@@ -641,23 +648,29 @@ function Distribution({ article }: { article: Article }) {
     setPublishing(true);
     const results: string[] = [];
     for (const platform of selected) {
-      const response = await fetch("/api/social/publish", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          platform,
-          text: texts[platform],
-          media: platform.startsWith("LinkedIn")
-            ? []
-            : media.map((item) => ({ url: item.url, type: item.type })),
-        }),
-      });
-      const result = await response.json();
-      results.push(
-        response.ok
-          ? `${platform}: published`
-          : `${platform}: ${result.error || "failed"}`,
-      );
+      try {
+        const response = await fetch("/api/social/publish", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            platform,
+            text: texts[platform],
+            media: platform.startsWith("LinkedIn")
+              ? []
+              : media.map((item) => ({ url: item.url, type: item.type })),
+          }),
+        });
+        const result = await response.json();
+        results.push(
+          response.ok
+            ? `${platform}: published`
+            : `${platform}: ${result.error || "failed"}`,
+        );
+      } catch (error) {
+        results.push(
+          `${platform}: ${error instanceof Error ? error.message : "network request failed"}`,
+        );
+      }
     }
     setPublishing(false);
     setNotice(results.join(" · "));
@@ -694,7 +707,7 @@ function Distribution({ article }: { article: Article }) {
           </div>
           <p>
             <b>{Object.values(enabled).filter(Boolean).length} channels</b>{" "}
-            selected · {notice}
+            selected · {notice || "Drafts are ready"}
           </p>
         </div>
         <div className="lifecycle">
@@ -887,6 +900,20 @@ function Distribution({ article }: { article: Article }) {
           {publishing ? "Publishing…" : "Publish selected platforms ↗"}
         </button>
       </div>
+      {notice && (
+        <div className="publish-toast" role="status" aria-live="polite">
+          <span>
+            {publishing
+              ? "●"
+              : notice.toLowerCase().includes("could not") ||
+                  notice.toLowerCase().includes("failed")
+                ? "!"
+                : "✓"}
+          </span>
+          <p>{notice}</p>
+          {!publishing && <button onClick={() => setNotice("")}>×</button>}
+        </div>
+      )}
     </>
   );
 }

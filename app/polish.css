@@ -291,6 +291,43 @@ h2,
   color: #fff;
   cursor: pointer;
 }
+.publish-toast {
+  position: fixed;
+  z-index: 100;
+  right: 24px;
+  bottom: 24px;
+  width: min(520px, calc(100vw - 48px));
+  display: grid;
+  grid-template-columns: 30px 1fr 24px;
+  align-items: start;
+  gap: 10px;
+  padding: 17px;
+  background: #071f3d;
+  color: #fff;
+  box-shadow: 0 18px 50px rgba(7, 31, 61, 0.3);
+}
+.publish-toast > span {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--orange);
+  font-weight: 800;
+}
+.publish-toast p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.publish-toast button {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
 .legal-page {
   width: min(760px, calc(100% - 40px));
   margin: 70px auto;

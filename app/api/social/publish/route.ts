@@ -311,6 +311,7 @@ async function publishLinkedIn(
 }
 
 export async function POST(request: NextRequest) {
+  let requestedPlatform = "unknown";
   try {
     const {
       platform,
@@ -321,6 +322,7 @@ export async function POST(request: NextRequest) {
       text: string;
       media?: Media[];
     };
+    requestedPlatform = platform;
     if (!text?.trim())
       return NextResponse.json(
         { error: "Post copy cannot be empty." },
@@ -343,6 +345,10 @@ export async function POST(request: NextRequest) {
               })();
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
+    console.error("Social publish failed", {
+      platform: requestedPlatform,
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Publishing failed." },
       { status: 400 },
