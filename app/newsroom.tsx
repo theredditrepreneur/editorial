@@ -29,59 +29,17 @@ const nav: { name: Page; icon: string }[] = [
 ];
 const fallbackArticles: Article[] = [
   {
-    title: "Halo Comes To PlayStation",
-    industry: "Gaming",
-    framework: "Community Gravity",
+    title: "Publication feed temporarily unavailable",
+    industry: "Community Intelligence",
+    framework: "Community Intelligence Stack",
     status: "Published",
-    distribution: "3 of 4 live",
-    date: "30 Jul 2026",
-    views: "12.4K",
-    lifecycle: 78,
-    tags: ["Xbox", "PlayStation"],
-  },
-  {
-    title: "Why AI Products Are Losing Their Early Adopters",
-    industry: "AI",
-    framework: "Trust Collapse",
-    status: "Ready",
     distribution: "Not started",
     date: "30 Jul 2026",
     views: "—",
-    lifecycle: 48,
-    tags: ["AI", "Retention"],
-  },
-  {
-    title: "The Community Economics Behind the New Club World Cup",
-    industry: "Sport",
-    framework: "Mission Premium",
-    status: "Draft",
-    distribution: "Not started",
-    date: "29 Jul 2026",
-    views: "—",
-    lifecycle: 31,
-    tags: ["Football"],
-  },
-  {
-    title: "When Brand Loyalty Becomes Community Gravity",
-    industry: "Consumer Brands",
-    framework: "Community Gravity",
-    status: "Research",
-    distribution: "Not started",
-    date: "28 Jul 2026",
-    views: "—",
-    lifecycle: 18,
-    tags: ["Loyalty"],
-  },
-  {
-    title: "The Franchise Reboot Nobody Asked For",
-    industry: "Entertainment",
-    framework: "Belief Correction",
-    status: "Published",
-    distribution: "4 of 4 live",
-    date: "25 Jul 2026",
-    views: "8.7K",
-    lifecycle: 85,
-    tags: ["Film", "Culture"],
+    lifecycle: 0,
+    tags: [],
+    summary:
+      "The newsroom could not reach the publication feed. Refresh to try again.",
   },
 ];
 const industries = [
@@ -109,17 +67,19 @@ const channels = [
   "Facebook Page",
   "X",
 ];
-const copy: Record<string, string> = {
-  "LinkedIn Personal":
-    "Halo coming to PlayStation isn’t just a platform shift. It’s a live case study in community gravity.\n\nFor twenty years, the franchise helped define Xbox identity. Now Microsoft is testing whether the community belongs to the platform—or to Halo itself.\n\nOur latest Community Intelligence analysis breaks down what happens next.",
-  "LinkedIn Company":
-    "NEW ANALYSIS — Halo Comes To PlayStation\n\nWhat happens when a platform-defining franchise crosses the boundary that made it culturally powerful? We examine the community signals, strategic trade-offs and the future of Xbox identity.",
-  Instagram:
-    "New Community Intelligence research from The Redditrepreneur.\n\nThe strongest communities do more than react to changeâ€”they help explain what it means. Read the full analysis through the link in bio.\n\n#CommunityIntelligence #TheRedditrepreneur",
-  "Facebook Page":
-    "Halo is coming to PlayStation. For players, that’s big news. For Microsoft, it’s a high-stakes test of where community loyalty really lives. Read our latest Gaming Community Intelligence analysis.",
-  X: "Halo on PlayStation is more than a platform shift. It’s a test of community gravity—and whether loyalty belongs to Xbox or to the franchise itself. Our latest analysis ↓",
-};
+function buildDistributionCopy(article: Article): Record<string, string> {
+  const summary =
+    article.summary ||
+    `${article.title} examines the community signals shaping ${article.industry}.`;
+  const url = article.url || "https://blog.theredditrepreneur.com";
+  return {
+    "LinkedIn Personal": `${article.title}\n\n${summary}\n\nHere is what the community response tells us—and why it matters.\n\nRead the full analysis: ${url}`,
+    "LinkedIn Company": `NEW COMMUNITY INTELLIGENCE — ${article.title}\n\n${summary}\n\nRead the full research from The Redditrepreneur: ${url}`,
+    Instagram: `${article.title}\n\n${summary}\n\nRead the full analysis through the link in bio.\n\n#CommunityIntelligence #TheRedditrepreneur #${article.industry.replace(/\s/g, "")}`,
+    "Facebook Page": `${article.title}\n\n${summary}\n\nRead the full analysis: ${url}`,
+    X: `${article.title}\n\n${summary.slice(0, 145)}\n\n${url}`,
+  };
+}
 
 const paths: Record<Page, string> = {
   Dashboard: "/",
@@ -146,12 +106,30 @@ export default function Newsroom({
   const [mobile, setMobile] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedArticle, setSelectedArticle] = useState(articles[0]);
+  const openArticle = (article: Article) => {
+    setSelectedArticle(article);
+    setPage("Distribution");
+    setMobile(false);
+    const key = article.url
+      ? encodeURIComponent(article.url)
+      : encodeURIComponent(article.title);
+    window.history.pushState({}, "", `${paths.Distribution}?article=${key}`);
+  };
   const go = (p: Page) => {
     setPage(p);
     setMobile(false);
     window.history.pushState({}, "", paths[p]);
   };
   useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get(
+      "article",
+    );
+    if (requested) {
+      const match = articles.find(
+        (article) => article.url === requested || article.title === requested,
+      );
+      if (match) queueMicrotask(() => setSelectedArticle(match));
+    }
     const onPop = () => {
       const found = (Object.entries(paths).find(
         ([, v]) => v === window.location.pathname,
@@ -160,7 +138,7 @@ export default function Newsroom({
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  }, [articles]);
   return (
     <div className="app-shell">
       <aside className={mobile ? "sidebar open" : "sidebar"}>
@@ -211,33 +189,38 @@ export default function Newsroom({
             {page}
           </div>
           <div className="header-actions">
-            <button className="search">
+            <button className="search" onClick={() => go("Articles")}>
               ⌕ <span>Search newsroom</span>
               <kbd>⌘ K</kbd>
             </button>
             <button className="notify">●</button>
-            <button className="primary" onClick={() => go("Articles")}>
-              ＋ New article
+            <button
+              className="primary"
+              onClick={() => window.location.reload()}
+            >
+              ↻ Sync publication
             </button>
           </div>
         </header>
         <section className="content">
-          {page === "Dashboard" && <Dashboard go={go} articles={articles} />}{" "}
+          {page === "Dashboard" && (
+            <Dashboard go={go} articles={articles} open={openArticle} />
+          )}{" "}
           {page === "Articles" && (
             <Articles
               articles={articles}
               query={query}
               setQuery={setQuery}
-              open={(a) => {
-                setSelectedArticle(a);
-                go("Distribution");
-              }}
+              open={openArticle}
             />
           )}{" "}
           {page === "Distribution" && (
-            <Distribution article={selectedArticle} />
+            <Distribution
+              key={selectedArticle.url || selectedArticle.title}
+              article={selectedArticle}
+            />
           )}{" "}
-          {page === "Editorial Calendar" && <Calendar />}{" "}
+          {page === "Editorial Calendar" && <Calendar articles={articles} />}{" "}
           {page === "Industries" && <Industries articles={articles} />}{" "}
           {page === "Frameworks" && <Frameworks articles={articles} />}{" "}
           {page === "Performance" && <Performance />}{" "}
@@ -276,17 +259,28 @@ function Title({
 function Dashboard({
   go,
   articles,
+  open,
 }: {
   go: (p: Page) => void;
   articles: Article[];
+  open: (article: Article) => void;
 }) {
+  const latest = articles[0];
+  const coverage = industries.map((desk) => ({
+    ...desk,
+    count: articles.filter((article) => article.industry === desk.name).length,
+  }));
   return (
     <>
       <Title
         eyebrow="EDITORIAL COMMAND CENTRE"
         title="Good morning, Editor."
-        sub="Your publication is on schedule. Two stories require distribution today."
-        action={<button className="secondary">View editorial brief →</button>}
+        sub={`${articles.length} live intelligence reports are available in the newsroom.`}
+        action={
+          <button className="secondary" onClick={() => go("Articles")}>
+            Open intelligence library →
+          </button>
+        }
       />
       <div className="brief">
         <div>
@@ -294,21 +288,24 @@ function Dashboard({
           <b>TODAY’S PUBLICATION SUMMARY</b>
         </div>
         <strong>
-          1 story published · 2 ready for distribution · 1 scheduled for 16:00
+          {articles.length} published reports · Publication feed synchronised
         </strong>
         <p>
-          Halo Comes To PlayStation is live and gaining early traction. LinkedIn
-          Personal and X distribution remain outstanding.
+          {latest.title} is the latest report and is ready for distribution.
         </p>
       </div>
       <div className="stats">
         {[
-          ["Published today", "1", "↑ 1 vs. yesterday"],
-          ["Drafts", "6", "2 need review"],
-          ["Awaiting distribution", "2", "Action required"],
-          ["Scheduled", "4", "Next at 16:00"],
-          ["Articles this month", "24", "↑ 14% vs. June"],
-          ["Website views", "48.2K", "Integration ready"],
+          [
+            "Published reports",
+            String(articles.length),
+            "Live publication archive",
+          ],
+          ["Drafts", "0", "No draft source connected"],
+          ["Awaiting distribution", String(articles.length), "Select a report"],
+          ["Scheduled", "0", "No schedules yet"],
+          ["Latest publication", latest.date, latest.industry],
+          ["Website views", "—", "Analytics not connected"],
         ].map((s, i) => (
           <div className="stat" key={s[0]}>
             <span>{s[0]}</span>
@@ -326,11 +323,7 @@ function Dashboard({
             </div>
             <button onClick={() => go("Articles")}>View all →</button>
           </div>
-          <ArticleTable
-            articles={articles}
-            compact
-            open={() => go("Distribution")}
-          />
+          <ArticleTable articles={articles} compact open={open} />
         </div>
         <div className="panel coverage">
           <div className="panel-head">
@@ -339,18 +332,23 @@ function Dashboard({
               <p>Articles published this quarter</p>
             </div>
           </div>
-          {industries.map((x) => (
+          {coverage.map((x) => (
             <div className="coverage-row" key={x.name}>
               <span className="dot" style={{ background: x.color }} />
               <b>{x.name}</b>
               <div>
-                <i style={{ width: `${x.count * 4}%`, background: x.color }} />
+                <i
+                  style={{
+                    width: `${Math.min(100, x.count * 8)}%`,
+                    background: x.color,
+                  }}
+                />
               </div>
               <strong>{x.count}</strong>
             </div>
           ))}
           <footer>
-            <b>67</b>
+            <b>{articles.length}</b>
             <span>Total intelligence reports</span>
           </footer>
         </div>
@@ -470,16 +468,19 @@ function Articles({
   setQuery: (v: string) => void;
   open: (a: Article) => void;
 }) {
+  const [statusFilter, setStatusFilter] = useState("All");
   const filtered = useMemo(
     () =>
-      articles.filter((a) =>
-        Object.values(a)
-          .flat()
-          .join(" ")
-          .toLowerCase()
-          .includes(query.toLowerCase()),
+      articles.filter(
+        (a) =>
+          (statusFilter === "All" || a.status === statusFilter) &&
+          Object.values(a)
+            .flat()
+            .join(" ")
+            .toLowerCase()
+            .includes(query.toLowerCase()),
       ),
-    [articles, query],
+    [articles, query, statusFilter],
   );
   return (
     <>
@@ -487,15 +488,29 @@ function Articles({
         eyebrow="INTELLIGENCE LIBRARY"
         title="Articles"
         sub="Manage every report from first signal through archive."
-        action={<button className="primary">＋ New article</button>}
+        action={
+          <button className="primary" onClick={() => window.location.reload()}>
+            ↻ Sync publication
+          </button>
+        }
       />
       <div className="tabs">
-        <button className="active">
+        <button
+          className={statusFilter === "All" ? "active" : ""}
+          onClick={() => setStatusFilter("All")}
+        >
           All <b>{articles.length}</b>
         </button>
         {["Idea", "Research", "Draft", "Ready", "Published", "Archived"].map(
           (x) => (
-            <button key={x}>{x}</button>
+            <button
+              className={statusFilter === x ? "active" : ""}
+              onClick={() => setStatusFilter(x)}
+              key={x}
+            >
+              {x}{" "}
+              <b>{articles.filter((article) => article.status === x).length}</b>
+            </button>
           ),
         )}
       </div>
@@ -508,10 +523,6 @@ function Articles({
             placeholder="Search headline, framework or tag…"
           />
         </label>
-        <button>Industry⌄</button>
-        <button>Framework⌄</button>
-        <button>Status⌄</button>
-        <button>Date⌄</button>
         <span>{filtered.length} articles</span>
       </div>
       <div className="panel">
@@ -522,11 +533,15 @@ function Articles({
 }
 
 function Distribution({ article }: { article: Article }) {
-  const [texts, setTexts] = useState(copy);
+  const [texts, setTexts] = useState(() => buildDistributionCopy(article));
   const [tab, setTab] = useState(channels[0]);
+  const [notice, setNotice] = useState(
+    "Drafts are saved in this browser session",
+  );
   const [enabled, setEnabled] = useState<Record<string, boolean>>({
     "LinkedIn Personal": true,
     "LinkedIn Company": true,
+    Instagram: true,
     "Facebook Page": true,
     X: true,
   });
@@ -535,18 +550,23 @@ function Distribution({ article }: { article: Article }) {
       <Title
         eyebrow="DISTRIBUTION DESK"
         title={article.title}
-        sub={`${article.industry} Community Intelligence · Published 30 July 2026`}
-        action={<button className="secondary">↗ View live article</button>}
+        sub={`${article.industry} Community Intelligence · Published ${article.date}`}
+        action={
+          article.url ? (
+            <a
+              className="button secondary"
+              href={article.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              ↗ View live article
+            </a>
+          ) : undefined
+        }
       />
       <div className="distribution-head">
         <div className="hero-preview">
-          <div className="halo">
-            HALO
-            <br />
-            <span>COMES TO</span>
-            <br />
-            PLAYSTATION
-          </div>
+          <div className="halo">{article.title}</div>
           <small>THEREDDITREPRENEUR.COM</small>
         </div>
         <div>
@@ -556,7 +576,8 @@ function Distribution({ article }: { article: Article }) {
             <i style={{ width: "72%" }} />
           </div>
           <p>
-            <b>3 of 4</b> selected channels ready · Last saved 2 minutes ago
+            <b>{Object.values(enabled).filter(Boolean).length} channels</b>{" "}
+            selected · {notice}
           </p>
         </div>
         <div className="lifecycle">
@@ -625,7 +646,17 @@ function Distribution({ article }: { article: Article }) {
                 <p>Platform-specific copy · Saved independently</p>
               </div>
             </div>
-            <button>✦ Generate AI version</button>
+            <button
+              onClick={() => {
+                setTexts({
+                  ...texts,
+                  [tab]: buildDistributionCopy(article)[tab],
+                });
+                setNotice(`${tab} copy regenerated`);
+              }}
+            >
+              ✦ Generate version
+            </button>
           </div>
           <textarea
             value={texts[tab]}
@@ -638,27 +669,70 @@ function Distribution({ article }: { article: Article }) {
             </b>
           </div>
           <div className="editor-actions">
-            <button>Preview</button>
-            <button>Schedule</button>
-            <button className="primary">Publish to {tab}</button>
+            <button onClick={() => setNotice(`${tab} preview is ready`)}>
+              Preview
+            </button>
+            <button
+              onClick={() =>
+                setNotice("Connect this channel in Settings before scheduling")
+              }
+            >
+              Schedule
+            </button>
+            <button
+              className="primary"
+              onClick={() =>
+                setNotice(`Connect ${tab} in Settings before publishing`)
+              }
+            >
+              Publish to {tab}
+            </button>
           </div>
         </div>
       </div>
       <div className="master-bar">
         <div>
           <span>MASTER CONTROLS</span>
-          <b>4 platforms selected</b>
+          <b>
+            {Object.values(enabled).filter(Boolean).length} platforms selected
+          </b>
         </div>
-        <button>Save drafts</button>
-        <button>✦ Regenerate all copy</button>
-        <button>Schedule all</button>
-        <button className="primary">Publish selected platforms ↗</button>
+        <button
+          onClick={() =>
+            setNotice("All platform drafts saved for this session")
+          }
+        >
+          Save drafts
+        </button>
+        <button
+          onClick={() => {
+            setTexts(buildDistributionCopy(article));
+            setNotice("All platform copy regenerated");
+          }}
+        >
+          ✦ Regenerate all copy
+        </button>
+        <button
+          onClick={() =>
+            setNotice("Connect platforms in Settings before scheduling")
+          }
+        >
+          Schedule all
+        </button>
+        <button
+          className="primary"
+          onClick={() =>
+            setNotice("Connect platforms in Settings before publishing")
+          }
+        >
+          Publish selected platforms ↗
+        </button>
       </div>
     </>
   );
 }
 
-function Calendar() {
+function Calendar({ articles }: { articles: Article[] }) {
   const days = [...Array(35)].map((_, i) =>
     i < 2 || i > 32 ? "" : String(i - 1),
   );
@@ -668,7 +742,11 @@ function Calendar() {
         eyebrow="PLANNING DESK"
         title="Editorial calendar"
         sub="Coordinate publication and social distribution across every desk."
-        action={<button className="primary">＋ Schedule article</button>}
+        action={
+          <span className="integration-label">
+            Publication dates synced from the live archive
+          </span>
+        }
       />
       <div className="calendar-tools">
         <button>‹</button>
@@ -688,21 +766,19 @@ function Calendar() {
           {days.map((d, i) => (
             <div className={d === "30" ? "today" : ""} key={i}>
               <span>{d}</span>
-              {d && i % 6 === 1 && (
-                <article className="event gaming">
-                  <b>09:00</b> Community gravity in gaming
-                </article>
-              )}
-              {d && i % 8 === 3 && (
-                <article className="event ai">
-                  <b>14:00</b> AI early adopters
-                </article>
-              )}
-              {d === "30" && (
-                <article className="event gaming">
-                  <b>LIVE</b> Halo Comes To PlayStation
-                </article>
-              )}
+              {d &&
+                articles
+                  .filter((article) => article.date.startsWith(`${Number(d)} `))
+                  .slice(0, 2)
+                  .map((article) => (
+                    <article
+                      className={`event ${article.industry === "AI" ? "ai" : "gaming"}`}
+                      key={article.url || article.title}
+                      title={article.title}
+                    >
+                      <b>LIVE</b> {article.title}
+                    </article>
+                  ))}
             </div>
           ))}
         </div>
@@ -711,7 +787,12 @@ function Calendar() {
   );
 }
 function Industries({ articles }: { articles: Article[] }) {
-  const [sel, setSel] = useState(industries[0]);
+  const desks = industries.map((desk) => ({
+    ...desk,
+    count: articles.filter((article) => article.industry === desk.name).length,
+  }));
+  const [selectedName, setSelectedName] = useState(desks[0].name);
+  const sel = desks.find((desk) => desk.name === selectedName) || desks[0];
   return (
     <>
       <Title
@@ -720,10 +801,10 @@ function Industries({ articles }: { articles: Article[] }) {
         sub="Dedicated intelligence coverage across six community-driven markets."
       />
       <div className="industry-cards">
-        {industries.map((x) => (
+        {desks.map((x) => (
           <button
             className={sel.name === x.name ? "selected" : ""}
-            onClick={() => setSel(x)}
+            onClick={() => setSelectedName(x.name)}
             key={x.name}
           >
             <i style={{ background: x.color }} />
@@ -749,17 +830,26 @@ function Industries({ articles }: { articles: Article[] }) {
               <span>Articles</span>
             </div>
             <div>
-              <b>6</b>
+              <b>
+                {
+                  new Set(
+                    articles
+                      .filter((a) => a.industry === sel.name)
+                      .map((a) => a.framework),
+                  ).size
+                }
+              </b>
               <span>Frameworks used</span>
             </div>
             <div>
-              <b>42.8K</b>
-              <span>Total views</span>
+              <b>—</b>
+              <span>Analytics pending</span>
             </div>
           </div>
           <h3>Latest intelligence</h3>
           {articles
             .filter((a) => a.industry === sel.name)
+            .slice(0, 6)
             .map((a) => (
               <div className="story" key={a.title}>
                 <span>{a.date}</span>
@@ -797,15 +887,17 @@ function Frameworks({ articles }: { articles: Article[] }) {
       />
       <div className="framework-layout">
         <div className="panel framework-list">
-          {frameworks.map((f, i) => (
+          {frameworks.map((f) => (
             <button
               className={sel === f ? "selected" : ""}
               key={f}
               onClick={() => setSel(f)}
             >
-              <i>{String(i + 1).padStart(2, "0")}</i>
+              <i>{String(frameworks.indexOf(f) + 1).padStart(2, "0")}</i>
               <span>{f}</span>
-              <b>{3 + i * 2}</b>
+              <b>
+                {articles.filter((article) => article.framework === f).length}
+              </b>
             </button>
           ))}
         </div>
@@ -819,11 +911,21 @@ function Frameworks({ articles }: { articles: Article[] }) {
           </p>
           <div className="mini-stats">
             <div>
-              <b>14</b>
+              <b>
+                {articles.filter((article) => article.framework === sel).length}
+              </b>
               <span>Usage count</span>
             </div>
             <div>
-              <b>5</b>
+              <b>
+                {
+                  new Set(
+                    articles
+                      .filter((article) => article.framework === sel)
+                      .map((article) => article.industry),
+                  ).size
+                }
+              </b>
               <span>Industries</span>
             </div>
             <div>
@@ -840,13 +942,16 @@ function Frameworks({ articles }: { articles: Article[] }) {
             <span>Mission Premium</span>
           </div>
           <h3>Recent applications</h3>
-          {articles.slice(0, 3).map((a) => (
-            <div className="story" key={a.title}>
-              <span>{a.industry}</span>
-              <b>{a.title}</b>
-              <em>→</em>
-            </div>
-          ))}
+          {articles
+            .filter((article) => article.framework === sel)
+            .slice(0, 5)
+            .map((a) => (
+              <div className="story" key={a.title}>
+                <span>{a.industry}</span>
+                <b>{a.title}</b>
+                <em>→</em>
+              </div>
+            ))}
         </div>
       </div>
     </>
@@ -859,19 +964,23 @@ function Performance() {
         eyebrow="INTELLIGENCE IMPACT"
         title="Performance"
         sub="Measure how research travels, resonates and compounds over time."
-        action={<button className="secondary">Last 30 days⌄</button>}
+        action={
+          <span className="integration-label">
+            Awaiting analytics connection
+          </span>
+        }
       />
       <div className="stats performance-stats">
         {[
-          ["Website views", "48,240", "+18.4%"],
-          ["Avg. time on page", "4m 12s", "+8.1%"],
-          ["Social reach", "126.8K", "+24.6%"],
-          ["Link clicks", "8,492", "+11.2%"],
+          ["Website views", "—", "Connect analytics"],
+          ["Avg. time on page", "—", "Connect analytics"],
+          ["Social reach", "—", "Connect platforms"],
+          ["Link clicks", "—", "Connect platforms"],
         ].map((x) => (
           <div className="stat" key={x[0]}>
             <span>{x[0]}</span>
             <strong>{x[1]}</strong>
-            <small>{x[2]} vs prior period</small>
+            <small>{x[2]}</small>
           </div>
         ))}
       </div>
@@ -930,9 +1039,9 @@ function Performance() {
               <em>Integration ready</em>
             </div>
             <section>
-              <b>{["84.2K", "28.4K", "14.2K"][i]}</b>
+              <b>—</b>
               <span>{i ? "Reach" : "Impressions"}</span>
-              <b>{["4,820", "1,742", "936"][i]}</b>
+              <b>—</b>
               <span>Clicks</span>
             </section>
           </div>
@@ -1074,6 +1183,23 @@ function Repurpose({ articles }: { articles: Article[] }) {
   );
 }
 function Settings() {
+  const [setup, setSetup] = useState<string | null>(null);
+  const [connectionMessage, setConnectionMessage] = useState("");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const platform = params.get("platform");
+    const result = params.get("connection");
+    if (!platform || !result) return;
+    queueMicrotask(() => setSetup(platform));
+    const required = params.get("required")?.split(",").filter(Boolean) || [];
+    queueMicrotask(() =>
+      setConnectionMessage(
+        result === "credentials-required"
+          ? `Add ${required.join(" and ")} to Vercel before connecting ${platform}.`
+          : `${platform} credentials are present. The final OAuth approval callback must now be enabled.`,
+      ),
+    );
+  }, []);
   const platforms = [
     "LinkedIn Personal",
     "LinkedIn Company",
@@ -1092,12 +1218,36 @@ function Settings() {
         sub="Prepare distribution channels and publication integrations."
       />
       <div className="settings-note">
-        <b>Architecture ready for connection</b>
+        <b>Social connection centre</b>
         <p>
-          Platform APIs are intentionally not active. Credentials and
-          permissions can be added when each integration is approved.
+          Connect each account through its secure provider sign-in. The provider
+          will show the exact publishing permissions before approval.
         </p>
       </div>
+      {setup && (
+        <div className="connection-panel panel">
+          <div>
+            <span className="overline">SECURE CONNECTION</span>
+            <h2>Connect {setup}</h2>
+            <p>
+              This launches the official {setup} authorisation flow. Your social
+              password is never entered in or stored by the Newsroom.
+            </p>
+            {connectionMessage && (
+              <p className="connection-warning">{connectionMessage}</p>
+            )}
+          </div>
+          <div className="connection-actions">
+            <button onClick={() => setSetup(null)}>Cancel</button>
+            <a
+              className="button primary"
+              href={`/api/social/connect?platform=${encodeURIComponent(setup)}`}
+            >
+              Continue to {setup} →
+            </a>
+          </div>
+        </div>
+      )}
       <div className="settings-grid">
         {platforms.map((x) => (
           <div className="panel setting" key={x}>
@@ -1111,12 +1261,8 @@ function Settings() {
               connected yet.
             </p>
             <footer>
-              <button title="Add the platform developer credentials in Vercel first">
-                Connect
-              </button>
-              <button title="Permissions are granted during the platform OAuth flow">
-                Permissions →
-              </button>
+              <button onClick={() => setSetup(x)}>Connect</button>
+              <button onClick={() => setSetup(x)}>Permissions →</button>
             </footer>
           </div>
         ))}
