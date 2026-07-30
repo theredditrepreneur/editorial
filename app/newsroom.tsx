@@ -1185,18 +1185,42 @@ function Repurpose({ articles }: { articles: Article[] }) {
 function Settings() {
   const [setup, setSetup] = useState<string | null>(null);
   const [connectionMessage, setConnectionMessage] = useState("");
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
   useEffect(() => {
+    fetch("/api/social/status", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: { connected?: string[] }) =>
+        setConnectedPlatforms(data.connected || []),
+      )
+      .catch(() => undefined);
     const params = new URLSearchParams(window.location.search);
     const platform = params.get("platform");
     const result = params.get("connection");
     if (!platform || !result) return;
     queueMicrotask(() => setSetup(platform));
     const required = params.get("required")?.split(",").filter(Boolean) || [];
+    if (result === "connected") {
+      queueMicrotask(() => {
+        setConnectedPlatforms(
+          platform === "Facebook" || platform === "Instagram"
+            ? ["Facebook", "Instagram"]
+            : [platform],
+        );
+        setConnectionMessage(
+          `${platform} connected successfully. Publishing access is now securely stored.`,
+        );
+      });
+      return;
+    }
     queueMicrotask(() =>
       setConnectionMessage(
         result === "credentials-required"
           ? `Add ${required.join(" and ")} to Vercel before connecting ${platform}.`
-          : `${platform} credentials are present. The final OAuth approval callback must now be enabled.`,
+          : result === "denied"
+            ? `${platform} did not grant access. You can try again when ready.`
+            : result === "token-error"
+              ? `Meta could not complete the connection: ${params.get("reason") || "token exchange failed"}.`
+              : `${platform} OAuth support is the next provider connection to enable.`,
       ),
     );
   }, []);
@@ -1253,15 +1277,33 @@ function Settings() {
           <div className="panel setting" key={x}>
             <div>
               <span className="channel-icon">{x[0]}</span>
-              <span className="connection">○ Ready to connect</span>
+              <span
+                className={
+                  connectedPlatforms.includes(x)
+                    ? "connection connected"
+                    : "connection"
+                }
+              >
+                {connectedPlatforms.includes(x)
+                  ? "● Connected"
+                  : "○ Ready to connect"}
+              </span>
             </div>
             <h2>{x}</h2>
             <p>
-              Secure OAuth connection architecture is prepared. No account is
-              connected yet.
+              {connectedPlatforms.includes(x)
+                ? "Publishing authorisation is securely connected."
+                : "Use the provider’s secure approval screen to connect this account."}
             </p>
             <footer>
-              <button onClick={() => setSetup(x)}>Connect</button>
+              <button
+                onClick={() => {
+                  setSetup(x);
+                  setConnectionMessage("");
+                }}
+              >
+                {connectedPlatforms.includes(x) ? "Reconnect" : "Connect"}
+              </button>
               <button onClick={() => setSetup(x)}>Permissions →</button>
             </footer>
           </div>
