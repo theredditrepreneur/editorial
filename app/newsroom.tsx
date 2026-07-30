@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createBrowserClient } from "@supabase/ssr";
 import Image from "next/image";
 import ProfileMenu from "./profile-menu";
 import type { Article } from "../lib/articles";
@@ -538,6 +539,10 @@ function Distribution({ article }: { article: Article }) {
   const [notice, setNotice] = useState(
     "Drafts are saved in this browser session",
   );
+  const [media, setMedia] = useState<
+    Array<{ name: string; type: string; preview: string; url?: string }>
+  >([]);
+  const [publishing, setPublishing] = useState(false);
   const [enabled, setEnabled] = useState<Record<string, boolean>>({
     "LinkedIn Personal": true,
     "LinkedIn Company": true,
@@ -545,6 +550,115 @@ function Distribution({ article }: { article: Article }) {
     "Facebook Page": true,
     X: true,
   });
+  const addMedia = async (files: FileList | null) => {
+    if (!files?.length) return;
+    const maximum = tab === "X" ? 4 : tab === "Instagram" ? 10 : 10;
+    const selected = Array.from(files).slice(0, maximum);
+    setNotice(
+      `Uploading ${selected.length} media file${selected.length === 1 ? "" : "s"}…`,
+    );
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    );
+    const uploaded = [] as Array<{
+      name: string;
+      type: string;
+      preview: string;
+      url?: string;
+    }>;
+    for (const file of selected) {
+      const preview = URL.createObjectURL(file);
+      const signResponse = await fetch("/api/media/sign", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      const signed = await signResponse.json();
+      if (!signResponse.ok) {
+        setNotice(signed.error || "Media upload could not start.");
+        return;
+      }
+      const { error } = await supabase.storage
+        .from(signed.bucket)
+        .uploadToSignedUrl(signed.path, signed.token, file, {
+          contentType: file.type,
+        });
+      if (error) {
+        setNotice(error.message);
+        return;
+      }
+      uploaded.push({
+        name: file.name,
+        type: file.type,
+        preview,
+        url: signed.publicUrl,
+      });
+    }
+    setMedia(uploaded);
+    setNotice(
+      `${uploaded.length} media file${uploaded.length === 1 ? "" : "s"} ready`,
+    );
+  };
+  const publish = async (platform: string) => {
+    setPublishing(true);
+    setNotice(`Publishing to ${platform}…`);
+    const response = await fetch("/api/social/publish", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        platform,
+        text: texts[platform],
+        media: media.map((item) => ({ url: item.url, type: item.type })),
+      }),
+    });
+    const result = await response.json();
+    setPublishing(false);
+    if (!response.ok) {
+      setNotice(result.error || `${platform} publishing failed.`);
+      return;
+    }
+    setNotice(
+      `${platform} post published successfully${result.url ? ` · ${result.url}` : ""}`,
+    );
+  };
+  const publishSelected = async () => {
+    const selected = channels.filter(
+      (channel) =>
+        enabled[channel] &&
+        ["X", "Facebook Page", "Instagram", "LinkedIn Personal"].includes(
+          channel,
+        ),
+    );
+    if (!selected.length) {
+      setNotice("Select X, Facebook Page or Instagram to publish.");
+      return;
+    }
+    setPublishing(true);
+    const results: string[] = [];
+    for (const platform of selected) {
+      const response = await fetch("/api/social/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          platform,
+          text: texts[platform],
+          media:
+            platform === "LinkedIn Personal"
+              ? []
+              : media.map((item) => ({ url: item.url, type: item.type })),
+        }),
+      });
+      const result = await response.json();
+      results.push(
+        response.ok
+          ? `${platform}: published`
+          : `${platform}: ${result.error || "failed"}`,
+      );
+    }
+    setPublishing(false);
+    setNotice(results.join(" · "));
+  };
   return (
     <>
       <Title
@@ -662,6 +776,50 @@ function Distribution({ article }: { article: Article }) {
             value={texts[tab]}
             onChange={(e) => setTexts({ ...texts, [tab]: e.target.value })}
           />
+          <div className="media-uploader">
+            <div>
+              <b>Images and video</b>
+              <small>
+                {tab === "X"
+                  ? "Up to 4 images"
+                  : tab === "Instagram"
+                    ? "1–10 images or videos"
+                    : "Add images or one video"}
+              </small>
+            </div>
+            <label className="button secondary">
+              ＋ Add media
+              <input
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                hidden
+                onChange={(event) => addMedia(event.target.files)}
+              />
+            </label>
+          </div>
+          {media.length > 0 && (
+            <div className="media-preview-grid">
+              {media.map((item, index) => (
+                <div key={`${item.name}-${index}`}>
+                  {item.type.startsWith("video/") ? (
+                    <video src={item.preview} controls />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.preview} alt={item.name} />
+                  )}
+                  <button
+                    aria-label={`Remove ${item.name}`}
+                    onClick={() =>
+                      setMedia(media.filter((_, i) => i !== index))
+                    }
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="counter">
             <span>Auto-saved just now</span>
             <b className={texts[tab].length > 280 && tab === "X" ? "over" : ""}>
@@ -681,11 +839,10 @@ function Distribution({ article }: { article: Article }) {
             </button>
             <button
               className="primary"
-              onClick={() =>
-                setNotice(`Connect ${tab} in Settings before publishing`)
-              }
+              disabled={publishing}
+              onClick={() => publish(tab)}
             >
-              Publish to {tab}
+              {publishing ? "Publishing…" : `Publish to ${tab}`}
             </button>
           </div>
         </div>
@@ -721,11 +878,10 @@ function Distribution({ article }: { article: Article }) {
         </button>
         <button
           className="primary"
-          onClick={() =>
-            setNotice("Connect platforms in Settings before publishing")
-          }
+          disabled={publishing}
+          onClick={publishSelected}
         >
-          Publish selected platforms ↗
+          {publishing ? "Publishing…" : "Publish selected platforms ↗"}
         </button>
       </div>
     </>

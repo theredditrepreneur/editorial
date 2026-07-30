@@ -1,21 +1,9 @@
-import { createCipheriv, createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { newsroomUrl } from "../../../../../lib/social-connection";
-
-function encrypt(value: string) {
-  const key = createHash("sha256")
-    .update(process.env.META_APP_SECRET!)
-    .digest();
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const encrypted = Buffer.concat([
-    cipher.update(value, "utf8"),
-    cipher.final(),
-  ]);
-  return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString(
-    "base64url",
-  );
-}
+import {
+  connectionCookie,
+  newsroomUrl,
+  sealConnection,
+} from "../../../../../lib/social-connection";
 
 export async function GET(request: NextRequest) {
   const destination = new URL("/settings", request.url);
@@ -51,23 +39,33 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(destination);
   }
 
+  const accountsUrl = new URL("https://graph.facebook.com/me/accounts");
+  accountsUrl.searchParams.set("access_token", token.access_token);
+  accountsUrl.searchParams.set(
+    "fields",
+    "id,name,access_token,instagram_business_account{id,username}",
+  );
+  const accountsResponse = await fetch(accountsUrl, { cache: "no-store" });
+  const accounts = accountsResponse.ok
+    ? ((await accountsResponse.json()) as { data?: unknown[] }).data || []
+    : [];
+
   destination.searchParams.set("connection", "connected");
   const response = NextResponse.redirect(destination);
   response.cookies.set(
     "newsroom_meta_connection",
-    encrypt(
-      JSON.stringify({
+    sealConnection(
+      {
         accessToken: token.access_token,
         expiresIn: token.expires_in,
         connectedAt: new Date().toISOString(),
-      }),
+        accounts,
+      },
+      process.env.META_APP_SECRET!,
     ),
     {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
+      ...connectionCookie,
       maxAge: token.expires_in || 5184000,
-      path: "/",
     },
   );
   response.cookies.delete("newsroom_meta_state");
