@@ -1239,6 +1239,16 @@ function Settings() {
     "Bluesky",
     "Newsletter",
   ];
+  const accountLabels: Record<string, string> = {
+    "LinkedIn Personal": "Tonte Bo Douglas",
+    "LinkedIn Company": "The Redditrepreneur",
+    Instagram: "@theredditrepreneur · Creator account linked to Facebook",
+    Facebook: "The Redditrepreneur · Facebook Page",
+    X: "@redditrepreneur",
+    Threads: "Account not specified",
+    Bluesky: "Account supplied through secure Vercel credentials",
+    Newsletter: "Newsletter provider not selected",
+  };
   return (
     <>
       <Title
@@ -1295,6 +1305,7 @@ function Settings() {
               </span>
             </div>
             <h2>{x}</h2>
+            <strong className="account-identity">{accountLabels[x]}</strong>
             <p>
               {connectedPlatforms.includes(x)
                 ? "Publishing authorisation is securely connected."

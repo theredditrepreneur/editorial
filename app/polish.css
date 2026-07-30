@@ -41,6 +41,13 @@ h2,
   font-family: inherit !important;
   letter-spacing: -0.025em;
 }
+.account-identity {
+  display: block;
+  min-height: 30px;
+  color: var(--navy);
+  font-size: 11px;
+  line-height: 1.45;
+}
 
 .brand {
   height: 116px !important;
