@@ -6,7 +6,6 @@ import { authConfigured } from "../../lib/auth-config";
 const sections = {
   articles: "Articles",
   distribution: "Distribution",
-  "editorial-calendar": "Editorial Calendar",
   settings: "Settings",
 } as const;
 const removedSections = new Set([
@@ -14,6 +13,7 @@ const removedSections = new Set([
   "frameworks",
   "performance",
   "repurpose",
+  "editorial-calendar",
 ]);
 export const dynamic = "force-dynamic";
 export default async function SectionPage({

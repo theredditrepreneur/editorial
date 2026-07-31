@@ -5,14 +5,11 @@ import Image from "next/image";
 import ProfileMenu from "./profile-menu";
 import type { Article } from "../lib/articles";
 
-type Page =
-  "Dashboard" | "Articles" | "Distribution" | "Editorial Calendar" | "Settings";
+type Page = "Articles" | "Distribution" | "Settings";
 
 const nav: { name: Page; icon: string }[] = [
-  { name: "Dashboard", icon: "⌂" },
   { name: "Articles", icon: "▤" },
   { name: "Distribution", icon: "↗" },
-  { name: "Editorial Calendar", icon: "□" },
   { name: "Settings", icon: "⚙" },
 ];
 const fallbackArticles: Article[] = [
@@ -30,23 +27,13 @@ const fallbackArticles: Article[] = [
       "The newsroom could not reach the publication feed. Refresh to try again.",
   },
 ];
-const industries = [
-  { name: "Gaming", count: 18, color: "#f26a2e" },
-  { name: "AI", count: 14, color: "#4361a6" },
-  { name: "Sport", count: 11, color: "#0c7767" },
-  { name: "Consumer Brands", count: 9, color: "#b34d6f" },
-  { name: "Entertainment", count: 8, color: "#7c58a5" },
-  { name: "SaaS", count: 7, color: "#b78520" },
-];
 const paths: Record<Page, string> = {
-  Dashboard: "/",
-  Articles: "/articles",
+  Articles: "/",
   Distribution: "/distribution",
-  "Editorial Calendar": "/editorial-calendar",
   Settings: "/settings",
 };
 export default function Newsroom({
-  initialPage = "Dashboard",
+  initialPage = "Articles",
   sourceArticles = [],
   authConfigured = true,
 }: {
@@ -86,7 +73,7 @@ export default function Newsroom({
     const onPop = () => {
       const found = (Object.entries(paths).find(
         ([, v]) => v === window.location.pathname,
-      )?.[0] || "Dashboard") as Page;
+      )?.[0] || "Articles") as Page;
       setPage(found);
     };
     window.addEventListener("popstate", onPop);
@@ -155,9 +142,6 @@ export default function Newsroom({
           </div>
         </header>
         <section className="content">
-          {page === "Dashboard" && (
-            <Dashboard go={go} articles={articles} open={openArticle} />
-          )}{" "}
           {page === "Articles" && (
             <Articles
               articles={articles}
@@ -172,7 +156,6 @@ export default function Newsroom({
               article={selectedArticle}
             />
           )}{" "}
-          {page === "Editorial Calendar" && <Calendar articles={articles} />}{" "}
           {page === "Settings" && <Settings />}
         </section>
       </main>
@@ -204,6 +187,7 @@ function Title({
     </div>
   );
 }
+/* Dashboard removed; Articles is now the Newsroom landing page.
 function Dashboard({
   go,
   articles,
@@ -338,6 +322,7 @@ function Workflow() {
     </div>
   );
 }
+*/
 
 function ArticleTable({
   articles,
@@ -362,7 +347,7 @@ function ArticleTable({
           </tr>
         </thead>
         <tbody>
-          {articles.slice(0, compact ? 4 : 9).map((a) => (
+          {(compact ? articles.slice(0, 4) : articles).map((a) => (
             <tr key={a.title}>
               <td>
                 <strong>
@@ -421,10 +406,10 @@ function DistributionStatus({ article }: { article: Article }) {
   if (count === null) return <span className="muted">Loading…</span>;
   return (
     <span className={count ? "progress" : "muted"}>
-      {count === 8
+      {count === 6
         ? "Complete"
         : count
-          ? `${count} of 8 posted`
+          ? `${count} of 6 posted`
           : "Not started"}
     </span>
   );
@@ -511,8 +496,6 @@ function Distribution({ article }: { article: Article }) {
     "Facebook",
     "Instagram",
     "X",
-    "Threads",
-    "Bluesky",
     "Newsletter",
   ];
   const storageKey = `newsroom-distribution:${article.url || article.title}`;
@@ -1058,6 +1041,7 @@ function LegacyDistribution({ article }: { article: Article }) {
 
 */
 
+/* Editorial Calendar removed from the streamlined Newsroom.
 function Calendar({ articles }: { articles: Article[] }) {
   const days = [...Array(35)].map((_, i) =>
     i < 2 || i > 32 ? "" : String(i - 1),
@@ -1112,6 +1096,8 @@ function Calendar({ articles }: { articles: Article[] }) {
     </>
   );
 }
+*/
+
 /* Removed newsroom sections: Industries, Frameworks, Performance and Repurpose.
 function Industries({ articles }: { articles: Article[] }) {
   const desks = industries.map((desk) => ({
